@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search API Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .output { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 10px 0; white-space: pre-wrap; font-size: 12px; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Search API Test</h1>
+        <p>Click the button below to test the search APIs and see the responses:</p>
+        
+        <button onclick="runTests()">Run Search API Tests</button>
+        <button onclick="clearOutput()">Clear Output</button>
+        
+        <div id="output"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '''';
+        
+        function log(message, type = 'normal') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = `output ${type}`;
+            div.textContent = message;
+            output.appendChild(div);
+        }
+        
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+        }
+        
+        async function runTests() {
+            clearOutput();
+            log('🔍 Starting Search API Tests...\n');
+            
+            // Test 1: General search with minimal params
+            log('1. Testing general search (/search/)');
+            try {
+                const response1 = await fetch(`${API_BASE_URL}/search/?limit=5`);
+                const data1 = await response1.json();
+                log(`Status: ${response1.status}`);
+                log(`Response: ${JSON.stringify(data1, null, 2)}`);
+                if (data1.data && data1.data.length > 0) {
+                    log(`✅ Found ${data1.data.length} professionals`, 'success');
+                } else {
+                    log(`⚠️ No professionals found`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+            
+            log('\n' + '='.repeat(50) + '\n');
+            
+            // Test 2: Search with NYC location
+            log('2. Testing search with NYC location');
+            try {
+                const response2 = await fetch(`${API_BASE_URL}/search/?latitude=40.7128&longitude=-74.0060&limit=5`);
+                const data2 = await response2.json();
+                log(`Status: ${response2.status}`);
+                log(`Response: ${JSON.stringify(data2, null, 2)}`);
+                if (data2.data && data2.data.length > 0) {
+                    log(`✅ Found ${data2.data.length} professionals`, 'success');
+                } else {
+                    log(`⚠️ No professionals found`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+            
+            log('\n' + '='.repeat(50) + '\n');
+            
+            // Test 3: Nearby search
+            log('3. Testing nearby search (/search/near-by/)');
+            try {
+                const response3 = await fetch(`${API_BASE_URL}/search/near-by/40.7128/-74.0060?limit=5`);
+                const data3 = await response3.json();
+                log(`Status: ${response3.status}`);
+                log(`Response: ${JSON.stringify(data3, null, 2)}`);
+                if (data3.data && data3.data.length > 0) {
+                    log(`✅ Found ${data3.data.length} professionals`, 'success');
+                } else {
+                    log(`⚠️ No professionals found`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+            
+            log('\n' + '='.repeat(50) + '\n');
+            
+            // Test 4: Lagos location (from API docs)
+            log('4. Testing with Lagos location (from API docs)');
+            try {
+                const response4 = await fetch(`${API_BASE_URL}/search/?latitude=6.6018&longitude=3.3515&radius=50&limit=5`);
+                const data4 = await response4.json();
+                log(`Status: ${response4.status}`);
+                log(`Response: ${JSON.stringify(data4, null, 2)}`);
+                if (data4.data && data4.data.length > 0) {
+                    log(`✅ Found ${data4.data.length} professionals`, 'success');
+                } else {
+                    log(`⚠️ No professionals found`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+            
+            log('\n' + '='.repeat(50) + '\n');
+            
+            // Test 5: Large radius search
+            log('5. Testing with large radius (500km)');
+            try {
+                const response5 = await fetch(`${API_BASE_URL}/search/?latitude=40.7128&longitude=-74.0060&radius=500&limit=20`);
+                const data5 = await response5.json();
+                log(`Status: ${response5.status}`);
+                log(`Response: ${JSON.stringify(data5, null, 2)}`);
+                if (data5.data && data5.data.length > 0) {
+                    log(`✅ Found ${data5.data.length} professionals`, 'success');
+                } else {
+                    log(`⚠️ No professionals found`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Error: ${error.message}`, 'error');
+            }
+            
+            log('\n✅ All tests completed!', 'success');
+        }
+    </script>
+</body>
+</html>

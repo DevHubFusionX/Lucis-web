@@ -6,6 +6,7 @@ import ContactModal from '../../../../components/ContactModal'
 import SearchHeader from '../../../../components/search/SearchHeader'
 import SearchFilters from '../../../../components/search/SearchFilters'
 import SearchResults from '../../../../components/search/SearchResults'
+import { theme } from '../../../../lib/theme'
 
 export default function SearchPage() {
   const [searchState, setSearchState] = useState({
@@ -132,9 +133,9 @@ export default function SearchPage() {
       {/* Active Filters Tags */}
       {filters.active.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium" style={{color: '#6B7280'}}>Active filters:</span>
+          <span className="text-sm font-medium" style={{color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ')}}>Active filters:</span>
           {filters.active.map((filter, i) => (
-            <span key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium" style={{backgroundColor: '#EEF2FF', color: '#1E3A8A'}}>
+            <span key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium" style={{backgroundColor: theme.colors.primary[100], color: theme.colors.primary[800], fontFamily: theme.typography.fontFamily.sans.join(', ')}}>
               {filter}
               <button onClick={() => removeFilter(filter)} className="hover:opacity-70">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +144,7 @@ export default function SearchPage() {
               </button>
             </span>
           ))}
-          <button className="text-sm font-semibold hover:underline" style={{color: '#DC2626'}}>Clear all</button>
+          <button className="text-sm font-semibold hover:underline" style={{color: '#DC2626', fontFamily: theme.typography.fontFamily.sans.join(', ')}}>Clear all</button>
         </div>
       )}
 

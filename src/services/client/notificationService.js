@@ -1,37 +1,37 @@
 import BaseApiService from '../api/baseApi'
-import { storage } from '../../utils/storage'
 
 class ClientNotificationService extends BaseApiService {
   async getNotifications() {
-    const user = storage.get('user')
-    
     try {
-      const data = await this.get(`/notifications/users/${user.id}`)
-      return Array.isArray(data.data) ? data.data : []
+      const data = await this.get('/notifications/users')
+      if (Array.isArray(data)) return data
+      if (data.data && Array.isArray(data.data)) return data.data
+      if (data.data && typeof data.data === 'object') return [data.data]
+      return []
     } catch (error) {
+      console.error('Failed to fetch notifications:', error)
       return []
     }
   }
 
-  async getNotification(notificationId) {
-    const user = storage.get('user')
-    const data = await this.get(`/notifications/users/${user.id}/${notificationId}`)
-    return this.handleResponse(data, 'Failed to fetch notification')
-  }
-
   async markAsRead(notificationId) {
-    const data = await this.patch(`/notifications/${notificationId}/read`)
-    return this.handleResponse(data, 'Failed to mark notification as read')
+    try {
+      const data = await this.patch(`/notifications/users/${notificationId}/read`)
+      return this.handleResponse(data, 'Failed to mark notification as read')
+    } catch (error) {
+      console.error('Failed to mark as read:', error)
+      throw error
+    }
   }
 
   async markAllAsRead() {
-    const data = await this.patch('/notifications/read-all')
-    return this.handleResponse(data, 'Failed to mark all notifications as read')
-  }
-
-  async deleteNotification(notificationId) {
-    const data = await this.delete(`/notifications/${notificationId}`)
-    return this.handleResponse(data, 'Failed to delete notification')
+    try {
+      const data = await this.patch('/notifications/users/read-all')
+      return this.handleResponse(data, 'Failed to mark all notifications as read')
+    } catch (error) {
+      console.error('Failed to mark all as read:', error)
+      throw error
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 import { useAuth } from '../../hooks/useAuth'
 import authService from '../../services/authService'
+import { dashboardTheme } from '../../lib/dashboardTheme'
 
 export default function TopBar({ onMenuClick }) {
   const { user, logout } = useAuth()
@@ -28,11 +29,11 @@ export default function TopBar({ onMenuClick }) {
   }
 
   return (
-    <header className="bg-white shadow-sm" style={{borderBottom: '1px solid #E5E7EB'}}>
+    <header className="shadow-sm" style={{backgroundColor: dashboardTheme.colors.card.bg, borderBottom: `1px solid ${dashboardTheme.colors.neutral.border}`}}>
       <div className="flex items-center justify-between h-16 px-6">
         <button 
           className="lg:hidden hover:text-black" 
-          style={{color: '#9CA3AF'}}
+          style={{color: dashboardTheme.colors.text.secondary}}
           onClick={onMenuClick}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,16 +50,16 @@ export default function TopBar({ onMenuClick }) {
                 className="w-8 h-8 rounded-full object-cover"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{backgroundColor: '#1E3A8A'}}>
-                <span className="text-white text-sm font-medium">{getInitials()}</span>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium" style={{backgroundColor: dashboardTheme.colors.primary}}>
+                {getInitials()}
               </div>
             )}
-            <span className="font-medium" style={{color: '#111827'}}>{getDisplayName()}</span>
+            <span className="font-medium" style={{color: dashboardTheme.colors.text.primary}}>{getDisplayName()}</span>
           </div>
           <button 
             onClick={handleLogout}
             className="text-white px-4 py-2 rounded-lg transition-colors hover:opacity-90" 
-            style={{backgroundColor: '#DC2626'}}
+            style={{backgroundColor: dashboardTheme.colors.status.error}}
           >
             Logout
           </button>

@@ -35,7 +35,7 @@ export default function ScheduleSelector({
             <div style={{
               width: '20px',
               height: '20px',
-              border: `2px solid ${theme.colors.primary[600]}`,
+              border: `2px solid ${theme.colors.primary[800]}`,
               borderTop: '2px solid transparent',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite'
@@ -61,7 +61,7 @@ export default function ScheduleSelector({
                   padding: theme.spacing.xs,
                   borderRadius: theme.borderRadius.md,
                   backgroundColor: selectedSchedule?.id === schedule.id ? theme.colors.primary[50] : theme.colors.white,
-                  border: `2px solid ${selectedSchedule?.id === schedule.id ? theme.colors.primary[600] : theme.colors.gray[200]}`,
+                  border: `2px solid ${selectedSchedule?.id === schedule.id ? theme.colors.primary[800] : theme.colors.gray[200]}`,
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
@@ -73,7 +73,7 @@ export default function ScheduleSelector({
                   fontSize: theme.typography.fontSize.sm
                 }}>{schedule.dayOfWeek}</span>
                 <span style={{
-                  color: selectedSchedule?.id === schedule.id ? theme.colors.primary[600] : theme.colors.gray[600],
+                  color: selectedSchedule?.id === schedule.id ? theme.colors.primary[800] : theme.colors.gray[600],
                   fontSize: theme.typography.fontSize.xs
                 }}>
                   {formatScheduleTime(schedule.startTime)} - {formatScheduleTime(schedule.endTime)}
@@ -142,7 +142,7 @@ export default function ScheduleSelector({
                 style={{
                   padding: theme.spacing.xs,
                   borderRadius: theme.borderRadius.md,
-                  border: `2px solid ${selectedTime === time ? theme.colors.primary[600] : theme.colors.gray[200]}`,
+                  border: `2px solid ${selectedTime === time ? theme.colors.primary[800] : theme.colors.gray[200]}`,
                   backgroundColor: selectedTime === time ? theme.colors.primary[50] : theme.colors.white,
                   color: selectedTime === time ? theme.colors.primary[700] : theme.colors.gray[700],
                   fontSize: theme.typography.fontSize.sm,

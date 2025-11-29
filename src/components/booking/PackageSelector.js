@@ -20,7 +20,7 @@ export default function PackageSelector({
           <div style={{
             width: '24px',
             height: '24px',
-            border: `2px solid ${theme.colors.primary[600]}`,
+            border: `2px solid ${theme.colors.primary[800]}`,
             borderTop: '2px solid transparent',
             borderRadius: '50%',
             animation: 'spin 1s linear infinite'
@@ -36,7 +36,7 @@ export default function PackageSelector({
               style={{
                 padding: theme.spacing.sm,
                 borderRadius: theme.borderRadius.lg,
-                border: `2px solid ${selectedPackages.includes(pkg.id) ? theme.colors.primary[600] : theme.colors.gray[200]}`,
+                border: `2px solid ${selectedPackages.includes(pkg.id) ? theme.colors.primary[800] : theme.colors.gray[200]}`,
                 backgroundColor: selectedPackages.includes(pkg.id) ? theme.colors.primary[50] : theme.colors.white,
                 cursor: 'pointer',
                 transition: 'all 0.2s'
@@ -51,8 +51,8 @@ export default function PackageSelector({
                   width: '20px',
                   height: '20px',
                   borderRadius: '50%',
-                  border: `2px solid ${selectedPackages.includes(pkg.id) ? theme.colors.primary[600] : theme.colors.gray[300]}`,
-                  backgroundColor: selectedPackages.includes(pkg.id) ? theme.colors.primary[600] : 'transparent',
+                  border: `2px solid ${selectedPackages.includes(pkg.id) ? theme.colors.primary[800] : theme.colors.gray[300]}`,
+                  backgroundColor: selectedPackages.includes(pkg.id) ? theme.colors.primary[800] : 'transparent',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -82,7 +82,7 @@ export default function PackageSelector({
                   }}>
                     <span style={{
                       fontWeight: '700',
-                      color: theme.colors.primary[600],
+                      color: theme.colors.primary[800],
                       fontSize: theme.typography.fontSize.lg
                     }}>${pkg.price}</span>
                     <span style={{

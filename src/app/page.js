@@ -5,6 +5,7 @@ import HowItWorks from '../components/landing/HowItWorks'
 import FeaturesAndBenefits from '../components/landing/FeaturesAndBenefits'
 import Testimonials from '../components/landing/Testimonials'
 import Services from '../components/landing/Services'
+import FAQ from '../components/landing/FAQ'
 import Footer from '../components/landing/Footer'
 
 export default function HomePage() {
@@ -16,6 +17,7 @@ export default function HomePage() {
       <HowItWorks />
       <FeaturesAndBenefits />
       <Testimonials />
+      <FAQ />
       <Footer />
     </div>
   )

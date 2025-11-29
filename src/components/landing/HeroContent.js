@@ -35,6 +35,7 @@ const heroImages = [
 export default function HeroContent() {
   const [sectionRef, isVisible] = useIsVisible(0.1)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isLargeScreen, setIsLargeScreen] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -43,19 +44,36 @@ export default function HeroContent() {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    const checkScreen = () => setIsLargeScreen(window.innerWidth >= 1024)
+    checkScreen()
+    window.addEventListener('resize', checkScreen)
+    return () => window.removeEventListener('resize', checkScreen)
+  }, [])
+
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen flex items-center overflow-hidden"
+      className="relative min-h-screen flex items-center overflow-hidden z-20"
       aria-label="Hero section"
-      style={{ backgroundColor: theme.colors.white }}
+      style={{
+        backgroundColor: theme.colors.white
+      }}
     >
-      <div className="absolute inset-0 bg-gradient-to-br" style={{ 
-        backgroundImage: `linear-gradient(to bottom right, ${theme.colors.neutral.warmGray}, ${theme.colors.white})`
+      <div className="absolute inset-0 hidden lg:block" style={{ 
+        backgroundImage: `linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0.9) 100%)`
+      }} />
+      <div className="absolute inset-0 lg:hidden" style={{ 
+        backgroundImage: `url('${heroImages[currentIndex]}')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      }} />
+      <div className="absolute inset-0 lg:hidden" style={{ 
+        backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.4) 100%)`
       }} />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 w-full py-12 sm:py-16 lg:py-20">
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-8 items-start">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-8 items-center lg:items-start">
           {/* Left Content */}
           <div className="lg:col-span-6 text-center lg:text-left relative z-10">
             <div
@@ -63,7 +81,7 @@ export default function HeroContent() {
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
               }`}
             >
-              <span className="text-[10px] sm:text-xs font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase" style={{ color: theme.colors.gray[500] }}>
+              <span className="text-xs sm:text-xs font-medium tracking-[0.15em] sm:tracking-[0.2em] uppercase" style={{ color: isLargeScreen ? theme.colors.gray[500] : 'rgb(255, 255, 255)', textShadow: isLargeScreen ? 'none' : '0 1px 2px rgba(0,0,0,0.2)' }}>
                 Where Vision Meets Reality
               </span>
             </div>
@@ -74,19 +92,19 @@ export default function HeroContent() {
               }`}
               style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
             >
-              <span className="block text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light leading-[0.95] tracking-tight mb-2 sm:mb-3" style={{ color: theme.colors.gray[900] }}>
+              <span className="block text-4xl sm:text-4xl md:text-5xl lg:text-7xl xl:text-8xl font-light leading-[0.95] tracking-tight mb-2 sm:mb-3" style={{ color: isLargeScreen ? theme.colors.gray[900] : 'rgb(255, 255, 255)', textShadow: isLargeScreen ? 'none' : '0 2px 4px rgba(0,0,0,0.2)' }}>
                 Every Frame
               </span>
-              <span className="block text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-light leading-[0.95] tracking-tight" style={{ color: theme.colors.accent[500] }}>
+              <span className="block text-4xl sm:text-4xl md:text-5xl lg:text-7xl xl:text-8xl font-light leading-[0.95] tracking-tight" style={{ color: theme.colors.accent[500] }}>
                 Tells a Story.
               </span>
             </h1>
 
             <p
-              className={`text-base sm:text-lg md:text-xl font-light leading-relaxed mb-8 sm:mb-10 lg:mb-12 max-w-xl mx-auto lg:mx-0 transition-all duration-1000 ease-out delay-400 ${
+              className={`text-base sm:text-base md:text-lg font-light leading-relaxed mb-8 sm:mb-10 lg:mb-12 max-w-xl mx-auto lg:mx-0 transition-all duration-1000 ease-out delay-400 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
               }`}
-              style={{ color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ') }}
+              style={{ color: isLargeScreen ? theme.colors.gray[600] : 'rgb(255, 255, 255)', fontFamily: theme.typography.fontFamily.sans.join(', '), textShadow: isLargeScreen ? 'none' : '0 1px 3px rgba(0,0,0,0.2)' }}
             >
               Connect with exceptional visual storytellers who transform fleeting moments into timeless art. Curated talent, seamless booking.
             </p>
@@ -98,7 +116,7 @@ export default function HeroContent() {
             >
               <Link
                 href="/search"
-                className="group inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 text-white text-sm sm:text-base font-semibold rounded-full transition-all duration-200 hover:shadow-lg"
+                className="group inline-flex items-center justify-center px-6 sm:px-8 py-3.5 sm:py-4 text-white text-base sm:text-base font-semibold rounded-full transition-all duration-200 hover:shadow-lg"
                 style={{ 
                   backgroundColor: theme.colors.accent[500],
                   fontFamily: theme.typography.fontFamily.sans.join(', ')
@@ -112,18 +130,21 @@ export default function HeroContent() {
 
               <button
                 type="button"
-                className="group inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base font-semibold rounded-full transition-all duration-200"
+                className="group inline-flex items-center justify-center px-6 sm:px-8 py-3.5 sm:py-4 text-base sm:text-base font-semibold rounded-full transition-all duration-200"
                 style={{ 
-                  color: theme.colors.gray[700],
-                  fontFamily: theme.typography.fontFamily.sans.join(', ')
+                  color: isLargeScreen ? theme.colors.gray[700] : 'rgb(255, 255, 255)',
+                  fontFamily: theme.typography.fontFamily.sans.join(', '),
+                  textShadow: isLargeScreen ? 'none' : '0 1px 2px rgba(0,0,0,0.2)'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = theme.colors.gray[100]
                   e.currentTarget.style.color = theme.colors.gray[900]
+                  e.currentTarget.style.textShadow = 'none'
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.color = theme.colors.gray[700]
+                  e.currentTarget.style.color = isLargeScreen ? theme.colors.gray[700] : 'rgb(255, 255, 255)'
+                  e.currentTarget.style.textShadow = isLargeScreen ? 'none' : '0 1px 2px rgba(0,0,0,0.2)'
                 }}
                 onClick={() => {
                   if (typeof document === 'undefined') return
@@ -137,11 +158,11 @@ export default function HeroContent() {
             </div>
           </div>
 
-          {/* Right Floating Images */}
-          <div className="lg:col-span-6 relative h-[400px] sm:h-[500px] lg:h-[700px] mt-8 lg:mt-0 pointer-events-none z-40">
+          {/* Right Floating Images - Hidden on Mobile */}
+          <div className="hidden lg:block lg:col-span-6 relative h-[700px] pointer-events-none z-40">
             {/* Large Main Image */}
             <div
-              className={`absolute top-0 right-0 sm:right-4 lg:right-0 w-[200px] h-[280px] sm:w-[240px] sm:h-[340px] lg:w-[340px] lg:h-[460px] rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl transition-all duration-1000 ease-out delay-300 ${
+              className={`absolute top-0 right-0 w-[340px] h-[460px] rounded-3xl overflow-hidden shadow-2xl transition-all duration-1000 ease-out delay-300 ${
                 isVisible ? 'opacity-100 translate-x-0 rotate-0' : 'opacity-0 translate-x-12 rotate-6'
               }`}
             >
@@ -160,7 +181,7 @@ export default function HeroContent() {
 
             {/* Small Top Left */}
             <div
-              className={`absolute top-8 sm:top-12 left-0 sm:left-4 lg:left-0 w-[120px] h-[160px] sm:w-40 sm:h-[220px] lg:w-[220px] lg:h-[300px] rounded-xl lg:rounded-2xl overflow-hidden shadow-xl transition-all duration-1000 ease-out delay-500 ${
+              className={`absolute top-12 left-0 w-[220px] h-[300px] rounded-2xl overflow-hidden shadow-xl transition-all duration-1000 ease-out delay-500 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-12'
               }`}
             >
@@ -174,7 +195,7 @@ export default function HeroContent() {
 
             {/* Medium Bottom Left */}
             <div
-              className={`absolute bottom-0 left-8 sm:left-16 lg:left-12 w-[140px] h-[180px] sm:w-[180px] sm:h-[240px] lg:w-[240px] lg:h-[320px] rounded-xl lg:rounded-2xl overflow-hidden shadow-xl transition-all duration-1000 ease-out delay-700 ${
+              className={`absolute bottom-0 left-12 w-[240px] h-[320px] rounded-2xl overflow-hidden shadow-xl transition-all duration-1000 ease-out delay-700 ${
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
               }`}
             >

@@ -153,7 +153,7 @@ export default function TestimonialPanel ({
               <p
                 className={`leading-relaxed text-slate-100 ${
                   isSignup ? 'text-lg' : 'text-base'
-                }`}
+                }`}z
                 style={{ fontFamily: sansFont }}
               >
                 {testimonial.quote}

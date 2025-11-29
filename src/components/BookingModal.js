@@ -213,7 +213,8 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
           <h2 style={{
             fontSize: theme.typography.fontSize['2xl'],
             fontWeight: 'bold',
-            color: theme.colors.gray[900]
+            color: theme.colors.neutral.deepGray,
+            fontFamily: theme.typography.fontFamily.display.join(', ')
           }}>
             Book {professional.firstName} {professional.lastName}
           </h2>
@@ -277,6 +278,7 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
                 backgroundColor: theme.colors.white,
                 color: theme.colors.gray[700],
                 fontWeight: '600',
+                fontFamily: theme.typography.fontFamily.sans.join(', '),
                 cursor: 'pointer'
               }}
             >
@@ -290,9 +292,10 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
                 padding: theme.spacing.sm,
                 borderRadius: theme.borderRadius.lg,
                 border: 'none',
-                backgroundColor: theme.colors.primary[600],
+                backgroundColor: theme.colors.primary[800],
                 color: theme.colors.white,
                 fontWeight: '600',
+                fontFamily: theme.typography.fontFamily.sans.join(', '),
                 cursor: 'pointer',
                 opacity: (loading || !selectedDate || !selectedTime || formData.selectedPackages.length === 0) ? 0.5 : 1
               }}

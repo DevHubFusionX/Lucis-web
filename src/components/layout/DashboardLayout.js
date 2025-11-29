@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import TopBar from './TopBar'
+import { dashboardTheme } from '../../lib/dashboardTheme'
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -26,7 +27,7 @@ export default function DashboardLayout({ children }) {
   ]
 
   return (
-    <div className="flex h-screen" style={{backgroundColor: '#F9FAFB'}}>
+    <div className="flex h-screen" style={{backgroundColor: dashboardTheme.colors.main.bg}}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
@@ -35,16 +36,16 @@ export default function DashboardLayout({ children }) {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-65 shadow-xl transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform lg:translate-x-0 lg:relative lg:flex lg:flex-col lg:w-65`} style={{backgroundColor: '#111827'}}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-65 shadow-xl transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform lg:translate-x-0 lg:relative lg:flex lg:flex-col lg:w-65`} style={{backgroundColor: dashboardTheme.colors.sidebar.bg}}>
         {/* Logo Area */}
-        <div className="flex items-center h-[70px] px-[18px]" style={{borderBottom: '1px solid #1F2937'}}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style={{backgroundColor: '#1E3A8A'}}>
+        <div className="flex items-center h-[70px] px-[18px]" style={{borderBottom: `1px solid ${dashboardTheme.colors.sidebar.border}`}}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3" style={{backgroundColor: dashboardTheme.colors.primary[600]}}>
             <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
             </svg>
           </div>
-          <span className="font-medium text-lg" style={{color: '#F9FAFB'}}>PhotoConnect</span>
-          <button className="lg:hidden ml-auto hover:text-white" style={{color: '#9CA3AF'}} onClick={() => setSidebarOpen(false)}>
+          <span className="font-medium text-lg" style={{color: dashboardTheme.colors.sidebar.text}}>PhotoConnect</span>
+          <button className="lg:hidden ml-auto hover:text-white" style={{color: dashboardTheme.colors.sidebar.textSecondary}} onClick={() => setSidebarOpen(false)}>
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -55,7 +56,7 @@ export default function DashboardLayout({ children }) {
         <nav className="flex-1 overflow-y-auto">
           {/* Main Section */}
           <div className="px-[18px] pt-5 pb-3">
-            <div className="text-xs font-medium uppercase tracking-wider mb-2" style={{color: '#9CA3AF'}}>MAIN</div>
+            <div className="text-xs font-medium uppercase tracking-wider mb-2" style={{color: dashboardTheme.colors.sidebar.textSecondary}}>MAIN</div>
             <div className="space-y-1">
               {mainNavigation.map((item) => {
                 const isActive = pathname === item.href
@@ -65,16 +66,16 @@ export default function DashboardLayout({ children }) {
                     href={item.href}
                     className={`relative flex items-center px-[18px] py-3 text-sm rounded-lg transition-all duration-200 group font-medium`}
                     style={{
-                      backgroundColor: isActive ? '#1E3A8A' : 'transparent',
-                      color: isActive ? '#F9FAFB' : '#D1D5DB'
+                      backgroundColor: isActive ? dashboardTheme.colors.primary[600] : dashboardTheme.colors.nav.inactiveBg,
+                      color: isActive ? dashboardTheme.colors.nav.activeText : dashboardTheme.colors.nav.inactiveText
                     }}
                     onClick={() => setSidebarOpen(false)}
                   >
                     {isActive && (
-                      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r" style={{backgroundColor: '#3B82F6'}}></div>
+                      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r" style={{backgroundColor: dashboardTheme.colors.accent[600]}}></div>
                     )}
                     <svg className={`w-5 h-5 mr-3 transition-colors`} 
-                         style={{color: isActive ? '#F9FAFB' : '#9CA3AF'}}
+                         style={{color: isActive ? dashboardTheme.colors.nav.activeText : dashboardTheme.colors.sidebar.textSecondary}}
                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                     </svg>
@@ -87,7 +88,7 @@ export default function DashboardLayout({ children }) {
 
           {/* System Section */}
           <div className="px-[18px] pt-5 pb-3">
-            <div className="text-xs font-medium uppercase tracking-wider mb-2" style={{color: '#9CA3AF'}}>SYSTEM</div>
+            <div className="text-xs font-medium uppercase tracking-wider mb-2" style={{color: dashboardTheme.colors.sidebar.textSecondary}}>SYSTEM</div>
             <div className="space-y-1">
               {systemNavigation.map((item) => {
                 const isActive = pathname === item.href
@@ -97,16 +98,16 @@ export default function DashboardLayout({ children }) {
                     href={item.href}
                     className={`relative flex items-center px-[18px] py-3 text-sm rounded-lg transition-all duration-200 group font-medium`}
                     style={{
-                      backgroundColor: isActive ? '#1E3A8A' : 'transparent',
-                      color: isActive ? '#F9FAFB' : '#D1D5DB'
+                      backgroundColor: isActive ? dashboardTheme.colors.primary[600] : dashboardTheme.colors.nav.inactiveBg,
+                      color: isActive ? dashboardTheme.colors.nav.activeText : dashboardTheme.colors.nav.inactiveText
                     }}
                     onClick={() => setSidebarOpen(false)}
                   >
                     {isActive && (
-                      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r" style={{backgroundColor: '#3B82F6'}}></div>
+                      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r" style={{backgroundColor: dashboardTheme.colors.accent[600]}}></div>
                     )}
                     <svg className={`w-5 h-5 mr-3 transition-colors`}
-                         style={{color: isActive ? '#F9FAFB' : '#9CA3AF'}}
+                         style={{color: isActive ? dashboardTheme.colors.nav.activeText : dashboardTheme.colors.sidebar.textSecondary}}
                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                     </svg>

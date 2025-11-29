@@ -14,13 +14,8 @@ class ClientBookingService extends BaseApiService {
   }
 
   async getBookings() {
-    const user = storage.get('user')
-    if (!user?.id) {
-      throw new Error('User not found')
-    }
-    
     try {
-      const data = await this.get(`/bookings/users/${user.id}`, true, 2 * 60 * 1000) // 2min cache
+      const data = await this.get('/bookings/users', true, 2 * 60 * 1000) // 2min cache
       return this.handleArrayResponse(data)
     } catch (error) {
       if (error.message === 'Booking was not found') {
@@ -31,7 +26,7 @@ class ClientBookingService extends BaseApiService {
   }
 
   async getBooking(bookingId) {
-    const data = await this.get(`/bookings/${bookingId}`)
+    const data = await this.get(`/bookings/users/${bookingId}`)
     return this.handleResponse(data, 'Failed to fetch booking')
   }
 

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { Zap, Shield, Calendar, CreditCard, Users, Camera } from 'lucide-react'
+import { Zap, Shield, Calendar, CreditCard, Camera } from 'lucide-react'
 import { theme } from '@/lib/theme'
 
 const photographerImages = [
@@ -69,6 +69,62 @@ function useIsVisible(threshold = 0.1) {
   return [ref, isVisible]
 }
 
+function PolaroidCard({ feature, image, rotation, delay, isVisible }) {
+  const Icon = feature.icon
+  const visibilityClass = isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+  return (
+    <div
+      className={`group relative transition-all duration-1000 ease-out ${visibilityClass}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      <div
+        className="relative bg-white rounded-lg overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-500"
+        style={{
+          transform: `rotate(${rotation}deg)`,
+          width: '140px',
+          height: '180px',
+          padding: '10px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
+        }}
+      >
+        <div className="relative w-full h-full bg-white rounded-sm overflow-hidden flex flex-col">
+          <div className="flex-1 relative overflow-hidden bg-gray-200">
+            <img
+              src={image}
+              alt={feature.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+            <div 
+              className="absolute inset-0 opacity-5"
+              style={{
+                backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" /%3E%3C/filter%3E%3Crect width="400" height="400" filter="url(%23noiseFilter)" /%3E%3C/svg%3E")',
+                backgroundSize: '200px 200px'
+              }}
+            />
+          </div>
+          
+          <div className="pt-2 px-1.5 pb-1.5">
+            <div className="flex items-center gap-1 mb-0.5">
+              <div 
+                className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: theme.colors.accent[50] }}
+              >
+                <Icon className="w-2 h-2" style={{ color: theme.colors.accent[500] }} />
+              </div>
+              <h3 className="text-[9px] font-semibold truncate" style={{ color: theme.colors.gray[900], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+                {feature.title}
+              </h3>
+            </div>
+            <p className="text-[7px] font-light leading-tight" style={{ color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+              {feature.description}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FeaturesAndBenefits() {
   const [sectionRef, isVisible] = useIsVisible(0.1)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -85,162 +141,271 @@ export default function FeaturesAndBenefits() {
       ref={sectionRef}
       className="relative py-20 sm:py-24 lg:py-32 bg-white overflow-hidden"
     >
-      {/* Subtle Background - matches Hero */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-white" />
-      </div>
+      <div className="absolute inset-0 bg-gradient-to-br" style={{ 
+        backgroundImage: `linear-gradient(to bottom right, ${theme.colors.neutral.warmGray}, ${theme.colors.white})`
+      }} />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
-        {/* Header */}
         <div 
-          className={`text-center mb-16 sm:mb-20 transition-all duration-1000 ease-out ${
+          className={`text-center mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 ease-out ${
             isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
           }`}
         >
-          <div className="inline-block mb-4 sm:mb-6">
-            <span className="text-xs font-medium tracking-[0.2em] uppercase text-gray-500">
-              The Platform
-            </span>
-          </div>
-          
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-light leading-[1.1] tracking-tight text-gray-900 mb-4">
-            Built for{' '}
-            <span style={{ color: theme.colors.accent[500] }} className="font-light">
-              Photography
-            </span>
+          <span className="text-xs font-medium tracking-[0.2em] uppercase" style={{ color: theme.colors.gray[500], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+            The Platform
+          </span>
+          <h2 className="text-3xl sm:text-5xl lg:text-7xl font-light leading-tight mt-3 sm:mt-4 mb-4 sm:mb-6" style={{ color: theme.colors.gray[900], fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+            Built for <span style={{ color: theme.colors.accent[500] }}>Photography</span>
           </h2>
-
-          <p className="text-base sm:text-lg md:text-xl font-light leading-relaxed text-gray-700 max-w-2xl mx-auto">
-            Experience seamless booking, verified talent, and professional results—all in one elegant platform.
+          <p className="text-sm sm:text-lg lg:text-2xl max-w-2xl mx-auto" style={{ color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+            Experience seamless booking, verified talent, and professional results
           </p>
         </div>
 
-        {/* Cinematic Bento Grid - 2x3 Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-          
-          {/* Photo Preview - Large Dynamic Box */}
-          <div 
-            className={`md:row-span-2 relative rounded-2xl lg:rounded-3xl overflow-hidden bg-gray-900 aspect-[4/5] md:aspect-auto shadow-2xl transition-all duration-1000 ease-out delay-200 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
-          >
-            {/* Rotating Images */}
-            <div className="absolute inset-0">
-              {photographerImages.map((img, index) => (
-                <div
-                  key={index}
-                  className={`absolute inset-0 transition-opacity duration-1000 ${
-                    index === currentImageIndex ? 'opacity-100' : 'opacity-0'
-                  }`}
-                >
-                  <img
-                    src={img}
-                    alt="Photography showcase"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                </div>
-              ))}
-            </div>
-
-            {/* Overlay Content */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 lg:p-10">
-              <div className="flex items-center gap-2 mb-3">
-                <Camera className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: theme.colors.accent[400] }} />
-                <span className="text-xs font-medium tracking-wider uppercase" style={{ color: theme.colors.gray[300] }}>
-                  Photo Preview
-                </span>
-              </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-light text-white mb-2 tracking-tight">
-                Stunning Portfolio
-              </h3>
-              <p className="text-sm font-light leading-relaxed" style={{ color: theme.colors.gray[400] }}>
-                Dynamic showcase of professional photography work
-              </p>
-              
-              {/* Pagination Dots */}
-              <div className="flex gap-2 mt-6">
-                {photographerImages.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentImageIndex(index)}
-                    className={`h-1 rounded-full transition-all duration-300 ${
-                      index === currentImageIndex 
-                        ? 'w-8 opacity-100' 
-                        : 'w-1 opacity-40 hover:opacity-70'
-                    }`}
-                    style={{ backgroundColor: theme.colors.accent[500] }}
-                    aria-label={`View image ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Feature Cards - 5 smaller tiles */}
-          {features.map((feature, index) => {
+        {/* Mobile Layout */}
+        <div className="md:hidden space-y-4">
+          {features.map((feature, idx) => {
             const Icon = feature.icon
-            
             return (
               <div
                 key={feature.id}
-                className={`group relative p-6 sm:p-8 rounded-2xl lg:rounded-3xl bg-white border-2 hover:shadow-xl transition-all duration-500 cursor-pointer overflow-hidden ${
+                className={`group relative p-4 rounded-2xl bg-white border-2 transition-all duration-1000 ease-out ${
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                 }`}
                 style={{ 
                   borderColor: theme.colors.gray[100],
-                  transitionDelay: `${(index + 1) * 100}ms`
+                  transitionDelay: `${idx * 100}ms`
                 }}
               >
-                {/* Subtle hover gradient */}
-                <div 
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${theme.colors.gray[50]} 0%, ${theme.colors.white} 100%)`
-                  }}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: `linear-gradient(135deg, ${theme.colors.gray[50]} 0%, ${theme.colors.white} 100%)` }}
                 />
-                
-                {/* Content */}
-                <div className="relative">
+                <div className="relative flex items-start gap-3">
                   <div 
-                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center mb-4 sm:mb-5 group-hover:scale-110 transition-all duration-500"
-                    style={{ 
-                      backgroundColor: theme.colors.accent[50],
-                      borderWidth: '1px',
-                      borderColor: theme.colors.accent[100]
-                    }}
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 mt-1"
+                    style={{ backgroundColor: theme.colors.accent[50] }}
                   >
-                    <Icon 
-                      className="w-5 h-5 sm:w-6 sm:h-6 transition-colors duration-500" 
-                      style={{ 
-                        color: theme.colors.accent[500] 
-                      }} 
-                    />
+                    <Icon className="w-5 h-5" style={{ color: theme.colors.accent[500] }} />
                   </div>
-                  
-                  <h3 
-                    className="text-lg sm:text-xl font-medium mb-2 transition-colors duration-300"
-                    style={{ color: theme.colors.gray[900] }}
-                  >
-                    {feature.title}
-                  </h3>
-                  
-                  <p 
-                    className="text-sm font-light leading-relaxed transition-colors duration-300"
-                    style={{ color: theme.colors.gray[600] }}
-                  >
-                    {feature.description}
-                  </p>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-semibold mb-1" style={{ color: theme.colors.gray[900], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+                      {feature.title}
+                    </h3>
+                    <p className="text-xs font-light" style={{ color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+                      {feature.description}
+                    </p>
+                  </div>
                 </div>
-
-                {/* Accent line */}
-                <div 
-                  className="absolute bottom-0 left-0 right-0 h-[2px] scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"
-                  style={{ backgroundColor: theme.colors.accent[500] }}
-                />
               </div>
             )
           })}
+        </div>
+
+        {/* Desktop Polaroid Bento Grid */}
+        <div className="hidden md:grid grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+          
+          {/* Polaroid Card - Top Left */}
+          <div className="md:col-span-1">
+            <PolaroidCard 
+              feature={features[0]} 
+              image={photographerImages[0]} 
+              rotation={-3}
+              delay={0}
+              isVisible={isVisible}
+            />
+          </div>
+
+          {/* Tall Feature - Top Right (spans 2 rows) */}
+          <div
+            className={`md:col-span-2 md:row-span-2 group relative p-8 rounded-2xl bg-white border-2 transition-all duration-1000 ease-out ${
+              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
+            style={{ 
+              borderColor: theme.colors.gray[100],
+              transitionDelay: '100ms'
+            }}
+          >
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{ background: `linear-gradient(135deg, ${theme.colors.gray[50]} 0%, ${theme.colors.white} 100%)` }}
+            />
+            <div className="relative h-full flex flex-col justify-between">
+              <div>
+                <div 
+                  className="w-14 h-14 rounded-xl flex items-center justify-center mb-6"
+                  style={{ backgroundColor: theme.colors.accent[50] }}
+                >
+                  <Zap className="w-7 h-7" style={{ color: theme.colors.accent[500] }} />
+                </div>
+                <h3 className="text-2xl lg:text-3xl font-semibold mb-3" style={{ color: theme.colors.gray[900], fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+                  {features[0].title}
+                </h3>
+                <p className="text-base font-light leading-relaxed" style={{ color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+                  {features[0].description}
+                </p>
+              </div>
+              <div 
+                className="w-12 h-1 rounded-full"
+                style={{ backgroundColor: theme.colors.accent[500] }}
+              />
+            </div>
+          </div>
+
+          {/* Polaroid Card - Bottom Left */}
+          <div className="md:col-span-1">
+            <PolaroidCard 
+              feature={features[1]} 
+              image={photographerImages[1]} 
+              rotation={2}
+              delay={200}
+              isVisible={isVisible}
+            />
+          </div>
+
+          {/* Wide Polaroid Card (tilted) - spans 3 columns */}
+          <div className="md:col-span-3 lg:col-span-2">
+            <div
+              className={`group relative transition-all duration-1000 ease-out ${
+                isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}
+              style={{ transitionDelay: '300ms' }}
+            >
+              <div
+                className="relative bg-white rounded-lg overflow-hidden shadow-xl hover:shadow-2xl transition-shadow duration-500"
+                style={{
+                  transform: 'rotate(-2deg)',
+                  padding: '12px',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
+                }}
+              >
+                <div className="relative w-full bg-white rounded-sm overflow-hidden flex">
+                  <div className="w-2/5 relative overflow-hidden bg-gray-200">
+                    <img
+                      src={photographerImages[2]}
+                      alt={features[2].title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div 
+                      className="absolute inset-0 opacity-5"
+                      style={{
+                        backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" /%3E%3C/filter%3E%3Crect width="400" height="400" filter="url(%23noiseFilter)" /%3E%3C/svg%3E")',
+                        backgroundSize: '200px 200px'
+                      }}
+                    />
+                  </div>
+                  <div className="w-3/5 p-4 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <div 
+                          className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: theme.colors.accent[50] }}
+                        >
+                          <Shield className="w-3 h-3" style={{ color: theme.colors.accent[500] }} />
+                        </div>
+                        <h3 className="text-sm font-semibold" style={{ color: theme.colors.gray[900], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+                          {features[2].title}
+                        </h3>
+                      </div>
+                      <p className="text-xs font-light leading-tight" style={{ color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+                        {features[2].description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Mini Cards x2 - Bottom Right */}
+          {[3, 4].map((idx) => {
+            const feature = features[idx]
+            const Icon = feature.icon
+            return (
+              <div
+                key={feature.id}
+                className={`group relative p-4 rounded-2xl bg-white border-2 transition-all duration-1000 ease-out ${
+                  isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+                }`}
+                style={{ 
+                  borderColor: theme.colors.gray[100],
+                  transitionDelay: `${400 + (idx - 3) * 100}ms`
+                }}
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: `linear-gradient(135deg, ${theme.colors.gray[50]} 0%, ${theme.colors.white} 100%)` }}
+                />
+                <div className="relative">
+                  <div 
+                    className="w-8 h-8 rounded-lg flex items-center justify-center mb-2"
+                    style={{ backgroundColor: theme.colors.accent[50] }}
+                  >
+                    <Icon className="w-4 h-4" style={{ color: theme.colors.accent[500] }} />
+                  </div>
+                  <h3 className="text-xs font-semibold mb-1" style={{ color: theme.colors.gray[900], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+                    {feature.title}
+                  </h3>
+                  <p className="text-[10px] font-light" style={{ color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+                    {feature.description}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Showcase Section */}
+        <div 
+          className={`relative rounded-3xl overflow-hidden bg-gray-900 py-12 sm:py-16 lg:py-24 mt-8 sm:mt-12 lg:mt-16 transition-all duration-1000 ease-out delay-500 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
+          <div className="absolute inset-0">
+            {photographerImages.map((img, index) => (
+              <div
+                key={index}
+                className={`absolute inset-0 transition-opacity duration-1000 ${
+                  index === currentImageIndex ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <img
+                  src={img}
+                  alt="Photography showcase"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
+              </div>
+            ))}
+          </div>
+
+          <div className="relative max-w-2xl px-4 sm:px-8 lg:px-12">
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <Camera className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: theme.colors.accent[400] }} />
+              <span className="text-xs font-medium tracking-wider uppercase" style={{ color: theme.colors.gray[300], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+                Featured
+              </span>
+            </div>
+            <h3 className="text-2xl sm:text-4xl lg:text-5xl font-light text-white mb-3 sm:mb-4 tracking-tight" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+              Stunning Portfolio
+            </h3>
+            <p className="text-sm sm:text-base font-light leading-relaxed mb-6 sm:mb-8" style={{ color: theme.colors.gray[300], fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+              Dynamic showcase of professional photography work
+            </p>
+            
+            <div className="flex gap-2">
+              {photographerImages.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentImageIndex(index)}
+                  className={`h-1 rounded-full transition-all duration-300 ${
+                    index === currentImageIndex 
+                      ? 'w-8 opacity-100' 
+                      : 'w-1 opacity-40 hover:opacity-70'
+                  }`}
+                  style={{ backgroundColor: theme.colors.accent[500] }}
+                  aria-label={`View image ${index + 1}`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </section>

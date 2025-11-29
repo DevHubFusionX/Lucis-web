@@ -162,7 +162,7 @@ export default function Navbar() {
           <div className="flex justify-between items-center h-16 px-6">
             {/* Logo */}
             <Link href="/" className="group flex items-center space-x-3">
-              <img src="/Logo/topbar.svg" alt="Lucis" className=" h-40 w-auto transition-transform duration-300 group-hover:scale-105" />
+              <img src="/Logo/Navbar.svg" alt="Lucis" className="h-8 w-auto transition-transform duration-300 group-hover:scale-105" />
             </Link>
 
             {/* Center Navigation - Desktop */}

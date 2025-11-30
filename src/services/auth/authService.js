@@ -37,6 +37,45 @@ class AuthService extends BaseApiService {
     return this.handleResponse(data, 'Signup failed')
   }
 
+  async googleLogin(credential, userType = 'client') {
+    // Decode JWT to get user info
+    const payload = JSON.parse(atob(credential.split('.')[1]))
+    const userData = {
+      email: payload.email,
+      name: payload.name,
+      picture: payload.picture,
+      googleId: payload.sub
+    }
+
+    // Try Google endpoint first, fallback to regular signup/login
+    try {
+      const endpoint = userType === 'professional' ? '/auth/professionals/google-login' : '/auth/users/google-login'
+      const data = await this.post(endpoint, { credential })
+      
+      if (data.data?.token) {
+        storage.set('token', data.data.token)
+        storage.set('user', data.data.user)
+        storage.set('userType', userType)
+        cookies.set('auth-token', data.data.token)
+      }
+      return this.handleResponse(data, 'Google login failed')
+    } catch (error) {
+      // Fallback: try regular login first, then signup
+      try {
+        return await this.login({ email: userData.email, password: userData.googleId }, userType)
+      } catch (loginError) {
+        // If login fails, try signup
+        return await this.signup({ 
+          email: userData.email, 
+          password: userData.googleId,
+          firstName: userData.name?.split(' ')[0] || '',
+          lastName: userData.name?.split(' ').slice(1).join(' ') || '',
+          fullName: userData.name
+        }, userType)
+      }
+    }
+  }
+
   async logout() {
     try {
       await this.post('/auth/logout')

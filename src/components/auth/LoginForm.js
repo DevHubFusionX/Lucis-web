@@ -1,9 +1,11 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { GoogleLogin } from '@react-oauth/google'
 import { useForm } from '../../hooks/useForm'
 import { validateLoginForm } from '../../utils/validation'
 import { theme } from '../../lib/theme'
+import authService from '../../services/auth/authService'
 
 export default function LoginForm ({
   formData,
@@ -14,10 +16,36 @@ export default function LoginForm ({
   const [showPassword, setShowPassword] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [focusedField, setFocusedField] = useState(null)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const { values, errors, isSubmitting, setValue, handleSubmit } = useForm(
     { email: '', password: '', rememberMe: false },
     validateLoginForm
   )
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    console.log('Google login success:', credentialResponse)
+    setIsGoogleLoading(true)
+    setSubmitError('')
+    try {
+      const result = await authService.googleLogin(credentialResponse.credential)
+      console.log('Auth service result:', result)
+      if (result.success) {
+        await onSubmit({ email: result.data?.user?.email, password: '', isGoogle: true })
+      } else {
+        setSubmitError(result.error || 'Google login failed')
+      }
+    } catch (error) {
+      console.error('Google login error:', error)
+      setSubmitError('Google login error. Please try again.')
+    } finally {
+      setIsGoogleLoading(false)
+    }
+  }
+
+  const handleGoogleError = (error) => {
+    console.error('Google login error:', error)
+    setSubmitError('Google login failed. Please try again.')
+  }
 
   const onFormSubmit = async formValues => {
     setSubmitError('')
@@ -303,7 +331,7 @@ export default function LoginForm ({
           {/* Submit Button */}
           <button
             type='submit'
-            disabled={isSubmitting}
+            disabled={isSubmitting || isGoogleLoading}
             className='w-full py-3.5 rounded-xl font-semibold text-base shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-white'
             style={{
               backgroundColor: theme.colors.accent[500],
@@ -335,6 +363,30 @@ export default function LoginForm ({
               </>
             )}
           </button>
+
+          {/* Divider */}
+          <div className='flex items-center gap-3'>
+            <div className='flex-1 h-px' style={{ backgroundColor: theme.colors.gray[600] }}></div>
+            <span className='text-xs font-medium' style={{ color: theme.colors.gray[400] }}>OR</span>
+            <div className='flex-1 h-px' style={{ backgroundColor: theme.colors.gray[600] }}></div>
+          </div>
+
+          {/* Google Login Button */}
+          <div className='flex justify-center w-full'>
+            {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                disabled={isGoogleLoading || isSubmitting}
+                theme='dark'
+                size='large'
+              />
+            ) : (
+              <div className='text-center text-sm' style={{ color: theme.colors.accent[200] }}>
+                Google login not configured
+              </div>
+            )}
+          </div>
 
           {/* Security Badge */}
           <div

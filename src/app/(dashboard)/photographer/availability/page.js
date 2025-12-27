@@ -1,20 +1,20 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import professionalService from '../../../../services/professionalService'
 import { theme } from '../../../../lib/theme'
+import { Calendar, Clock, Plus, Trash2 } from 'lucide-react'
 
 export default function AvailabilityPage() {
   const [schedules, setSchedules] = useState([])
-  const [workingDays, setWorkingDays] = useState({
-    Monday: false, Tuesday: false, Wednesday: false, Thursday: false, Friday: false, Saturday: false, Sunday: false
+  const [selectedDays, setSelectedDays] = useState([])
+  const [timeSlots, setTimeSlots] = useState([{ start: '09:00', end: '17:00' }])
+  const [validPeriod, setValidPeriod] = useState({ 
+    from: new Date().toISOString().split('T')[0], 
+    until: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   })
-  const [hours, setHours] = useState({ start: '09:00', end: '18:00' })
-  const [validPeriod, setValidPeriod] = useState({ from: '', until: '' })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [editingSchedule, setEditingSchedule] = useState(null)
-  const [editForm, setEditForm] = useState({})
+  const [message, setMessage] = useState({ type: '', text: '' })
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -24,544 +24,222 @@ export default function AvailabilityPage() {
 
   const loadSchedules = async () => {
     try {
-      setLoading(true)
       const response = await professionalService.getSchedules()
-      const scheduleData = response.records || []
-      setSchedules(scheduleData)
-      
-      // Update working days based on existing schedules
-      const activeDays = {}
-      scheduleData.forEach(schedule => {
-        if (schedule.isActive) {
-          activeDays[schedule.dayOfWeek.charAt(0).toUpperCase() + schedule.dayOfWeek.slice(1)] = true
-        }
-      })
-      setWorkingDays(prev => ({ ...prev, ...activeDays }))
-      
-      // Set hours from first active schedule
-      const firstSchedule = scheduleData.find(s => s.isActive)
-      if (firstSchedule) {
-        setHours({ start: firstSchedule.startTime, end: firstSchedule.endTime })
-        setValidPeriod({ from: firstSchedule.validFrom, until: firstSchedule.validUntil })
-      }
+      setSchedules(response.records || [])
     } catch (err) {
-      setError('Failed to load schedules')
+      console.error('Failed to load schedules:', err)
+    }
+  }
+
+  const toggleDay = (day) => {
+    setSelectedDays(prev => 
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    )
+  }
+
+  const addTimeSlot = () => {
+    setTimeSlots([...timeSlots, { start: '09:00', end: '17:00' }])
+  }
+
+  const removeTimeSlot = (index) => {
+    setTimeSlots(timeSlots.filter((_, i) => i !== index))
+  }
+
+  const updateTimeSlot = (index, field, value) => {
+    const updated = [...timeSlots]
+    updated[index][field] = value
+    setTimeSlots(updated)
+  }
+
+  const saveAvailability = async () => {
+    if (selectedDays.length === 0) {
+      setMessage({ type: 'error', text: 'Please select at least one day' })
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
+      return
+    }
+
+    setLoading(true)
+    try {
+      for (const day of selectedDays) {
+        for (const slot of timeSlots) {
+          await professionalService.createSchedule({
+            dayOfWeek: day.toLowerCase(),
+            startTime: slot.start + ':00',
+            endTime: slot.end + ':00',
+            isActive: true,
+            validFrom: validPeriod.from,
+            validUntil: validPeriod.until
+          })
+        }
+      }
+      
+      setMessage({ type: 'success', text: 'Availability saved successfully!' })
+      setSelectedDays([])
+      setTimeSlots([{ start: '09:00', end: '17:00' }])
+      await loadSchedules()
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
+    } catch (err) {
+      setMessage({ type: 'error', text: err.message })
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleDay = async (day) => {
-    const isCurrentlyActive = workingDays[day]
-    const dayLower = day.toLowerCase()
-    
+  const deleteSchedule = async (id) => {
     try {
-      if (isCurrentlyActive) {
-        // Find and delete existing schedule
-        const existingSchedule = schedules.find(s => s.dayOfWeek === dayLower)
-        if (existingSchedule) {
-          await professionalService.deleteSchedule(existingSchedule.id)
-        }
-      } else {
-        // Create new schedule
-        const scheduleData = {
-          dayOfWeek: dayLower,
-          startTime: hours.start + ':00',
-          endTime: hours.end + ':00',
-          isActive: true,
-          validFrom: validPeriod.from || new Date().toISOString().split('T')[0],
-          validUntil: validPeriod.until || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        }
-        await professionalService.createSchedule(scheduleData)
-      }
-      
-      setWorkingDays(prev => ({ ...prev, [day]: !prev[day] }))
+      await professionalService.deleteSchedule(id)
+      setMessage({ type: 'success', text: 'Schedule deleted' })
       await loadSchedules()
-      setSuccess(`Schedule ${isCurrentlyActive ? 'removed' : 'created'} for ${day}`)
-      setTimeout(() => setSuccess(''), 3000)
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
     } catch (err) {
-      setError(err.message)
-      setTimeout(() => setError(''), 3000)
-    }
-  }
-
-  const updateAllSchedules = async () => {
-    try {
-      setLoading(true)
-      const activeSchedules = schedules.filter(s => workingDays[s.dayOfWeek.charAt(0).toUpperCase() + s.dayOfWeek.slice(1)])
-      
-      for (const schedule of activeSchedules) {
-        const updatedData = {
-          dayOfWeek: schedule.dayOfWeek,
-          startTime: hours.start + ':00',
-          endTime: hours.end + ':00',
-          isActive: true,
-          validFrom: validPeriod.from || schedule.validFrom,
-          validUntil: validPeriod.until || schedule.validUntil
-        }
-        await professionalService.updateSchedule(schedule.id, updatedData)
-      }
-      
-      await loadSchedules()
-      setSuccess('All schedules updated successfully')
-      setTimeout(() => setSuccess(''), 3000)
-    } catch (err) {
-      setError(err.message)
-      setTimeout(() => setError(''), 3000)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const startEditSchedule = (schedule) => {
-    setEditingSchedule(schedule.id)
-    setEditForm({
-      startTime: schedule.startTime.slice(0, 5),
-      endTime: schedule.endTime.slice(0, 5),
-      validFrom: schedule.validFrom,
-      validUntil: schedule.validUntil,
-      isActive: schedule.isActive
-    })
-  }
-
-  const cancelEdit = () => {
-    setEditingSchedule(null)
-    setEditForm({})
-  }
-
-  const updateIndividualSchedule = async (scheduleId) => {
-    try {
-      const schedule = schedules.find(s => s.id === scheduleId)
-      const updatedData = {
-        dayOfWeek: schedule.dayOfWeek,
-        startTime: editForm.startTime + ':00',
-        endTime: editForm.endTime + ':00',
-        isActive: editForm.isActive,
-        validFrom: editForm.validFrom,
-        validUntil: editForm.validUntil
-      }
-      
-      await professionalService.updateSchedule(scheduleId, updatedData)
-      await loadSchedules()
-      setEditingSchedule(null)
-      setEditForm({})
-      setSuccess('Schedule updated successfully')
-      setTimeout(() => setSuccess(''), 3000)
-    } catch (err) {
-      setError(err.message)
-      setTimeout(() => setError(''), 3000)
-    }
-  }
-
-  const deleteIndividualSchedule = async (scheduleId) => {
-    if (!confirm('Are you sure you want to delete this schedule?')) return
-    
-    try {
-      await professionalService.deleteSchedule(scheduleId)
-      await loadSchedules()
-      setSuccess('Schedule deleted successfully')
-      setTimeout(() => setSuccess(''), 3000)
-    } catch (err) {
-      setError(err.message)
-      setTimeout(() => setError(''), 3000)
+      setMessage({ type: 'error', text: err.message })
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
     }
   }
 
   return (
-    <div style={{ padding: theme.spacing.md }}>
-      {/* Header */}
-      <div style={{ marginBottom: theme.spacing.lg }}>
-        <h1 style={{ 
-          fontSize: theme.typography.fontSize['3xl'], 
-          fontWeight: 'bold', 
-          color: theme.colors.gray[900],
-          marginBottom: theme.spacing.xs
-        }}>Availability</h1>
-        <p style={{ color: theme.colors.gray[600] }}>Manage your schedule and availability</p>
-        
-        {error && (
-          <div style={{
-            marginTop: theme.spacing.sm,
-            padding: theme.spacing.sm,
-            borderRadius: theme.borderRadius.lg,
-            backgroundColor: '#FEE2E2',
-            color: '#DC2626'
-          }}>
-            {error}
-          </div>
-        )}
-        
-        {success && (
-          <div style={{
-            marginTop: theme.spacing.sm,
-            padding: theme.spacing.sm,
-            borderRadius: theme.borderRadius.lg,
-            backgroundColor: '#D1FAE5',
-            color: '#065F46'
-          }}>
-            {success}
-          </div>
-        )}
-      </div>
+    <div className="space-y-6">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+          Set Your Availability
+        </h1>
+        <p className="text-gray-600">Choose when you're available to take bookings</p>
+      </motion.div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.lg }}>
-        {/* Left Column */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.lg }}>
-          {/* Working Days */}
-          <div style={{
-            padding: theme.spacing.lg,
-            borderRadius: theme.borderRadius.xl,
-            backgroundColor: theme.colors.white,
-            border: `1px solid ${theme.colors.gray[200]}`,
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs, marginBottom: theme.spacing.sm }}>
-              <svg style={{ width: '20px', height: '20px', color: theme.colors.primary[600] }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v16a2 2 0 002 2z" />
-              </svg>
-              <h2 style={{ fontSize: theme.typography.fontSize.lg, fontWeight: '600', color: theme.colors.gray[900] }}>Working Days</h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: theme.spacing.xs }}>
-              {days.map(day => (
-                <button
-                  key={day}
-                  onClick={() => toggleDay(day)}
-                  style={{
-                    padding: theme.spacing.sm,
-                    borderRadius: theme.borderRadius.lg,
-                    fontWeight: '600',
-                    fontSize: theme.typography.fontSize.sm,
-                    backgroundColor: workingDays[day] ? theme.colors.primary[600] : theme.colors.gray[100],
-                    color: workingDays[day] ? theme.colors.white : theme.colors.gray[600],
-                    border: workingDays[day] ? 'none' : `1px solid ${theme.colors.gray[200]}`,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{ fontSize: theme.typography.fontSize.xs, marginBottom: '4px' }}>{day.slice(0, 3)}</div>
-                  {workingDays[day] && (
-                    <svg style={{ width: '16px', height: '16px', margin: '0 auto', display: 'block' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Working Hours */}
-          <div style={{
-            padding: theme.spacing.lg,
-            borderRadius: theme.borderRadius.xl,
-            backgroundColor: theme.colors.white,
-            border: `1px solid ${theme.colors.gray[200]}`,
-            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs, marginBottom: theme.spacing.sm }}>
-              <svg style={{ width: '20px', height: '20px', color: theme.colors.primary[600] }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <h2 style={{ fontSize: theme.typography.fontSize.lg, fontWeight: '600', color: theme.colors.gray[900] }}>Working Hours</h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}>
-              <div>
-                <label style={{ display: 'block', fontSize: theme.typography.fontSize.sm, fontWeight: '600', marginBottom: theme.spacing.xs, color: theme.colors.gray[700] }}>Start Time</label>
-                <input
-                  type="time"
-                  value={hours.start}
-                  onChange={(e) => setHours({...hours, start: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: theme.spacing.sm,
-                    borderRadius: theme.borderRadius.lg,
-                    border: `1px solid ${theme.colors.gray[200]}`,
-                    color: theme.colors.gray[900]
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: theme.typography.fontSize.sm, fontWeight: '600', marginBottom: theme.spacing.xs, color: theme.colors.gray[700] }}>End Time</label>
-                <input
-                  type="time"
-                  value={hours.end}
-                  onChange={(e) => setHours({...hours, end: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: theme.spacing.sm,
-                    borderRadius: theme.borderRadius.lg,
-                    border: `1px solid ${theme.colors.gray[200]}`,
-                    color: theme.colors.gray[900]
-                  }}
-                />
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}>
-              <div>
-                <label style={{ display: 'block', fontSize: theme.typography.fontSize.sm, fontWeight: '600', marginBottom: theme.spacing.xs, color: theme.colors.gray[700] }}>Valid From</label>
-                <input
-                  type="date"
-                  value={validPeriod.from}
-                  onChange={(e) => setValidPeriod({...validPeriod, from: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: theme.spacing.sm,
-                    borderRadius: theme.borderRadius.lg,
-                    border: `1px solid ${theme.colors.gray[200]}`,
-                    color: theme.colors.gray[900]
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: theme.typography.fontSize.sm, fontWeight: '600', marginBottom: theme.spacing.xs, color: theme.colors.gray[700] }}>Valid Until</label>
-                <input
-                  type="date"
-                  value={validPeriod.until}
-                  onChange={(e) => setValidPeriod({...validPeriod, until: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: theme.spacing.sm,
-                    borderRadius: theme.borderRadius.lg,
-                    border: `1px solid ${theme.colors.gray[200]}`,
-                    color: theme.colors.gray[900]
-                  }}
-                />
-              </div>
-            </div>
-            <button
-              onClick={updateAllSchedules}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: theme.spacing.sm,
-                borderRadius: theme.borderRadius.lg,
-                backgroundColor: theme.colors.primary[600],
-                color: theme.colors.white,
-                fontWeight: '600',
-                border: 'none',
-                cursor: 'pointer',
-                opacity: loading ? 0.5 : 1
-              }}
-            >
-              {loading ? 'Updating...' : 'Update All Active Schedules'}
-            </button>
-          </div>
+      {message.text && (
+        <div className={`p-4 rounded-xl ${message.type === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+          {message.text}
         </div>
+      )}
 
-        {/* Right Column - Current Schedules */}
-        <div style={{
-          padding: theme.spacing.lg,
-          borderRadius: theme.borderRadius.xl,
-          backgroundColor: theme.colors.white,
-          border: `1px solid ${theme.colors.gray[200]}`,
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs, marginBottom: theme.spacing.sm }}>
-            <svg style={{ width: '20px', height: '20px', color: theme.colors.primary[600] }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <h2 style={{ fontSize: theme.typography.fontSize.lg, fontWeight: '600', color: theme.colors.gray[900] }}>Current Schedules</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Set Availability */}
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center gap-2 mb-6">
+            <Calendar className="w-5 h-5" style={{ color: theme.colors.accent[600] }} />
+            <h2 className="text-xl font-bold text-gray-900">Select Days</h2>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs, maxHeight: '500px', overflowY: 'auto' }}>
+
+          <div className="grid grid-cols-7 gap-2 mb-6">
+            {days.map(day => (
+              <button
+                key={day}
+                onClick={() => toggleDay(day)}
+                className="flex flex-col items-center p-3 rounded-xl transition-all"
+                style={{
+                  background: selectedDays.includes(day) 
+                    ? `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})`
+                    : '#F9FAFB',
+                  color: selectedDays.includes(day) ? 'white' : '#6B7280'
+                }}
+              >
+                <span className="text-xs font-semibold">{day.slice(0, 3)}</span>
+                {selectedDays.includes(day) && (
+                  <svg className="w-4 h-4 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-5 h-5" style={{ color: theme.colors.accent[600] }} />
+            <h3 className="text-lg font-bold text-gray-900">Time Slots</h3>
+          </div>
+
+          {timeSlots.map((slot, index) => (
+            <div key={index} className="flex items-center gap-3 mb-3">
+              <input
+                type="time"
+                value={slot.start}
+                onChange={(e) => updateTimeSlot(index, 'start', e.target.value)}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2"
+                style={{ focusRingColor: theme.colors.accent[500] }}
+              />
+              <span className="text-gray-500">to</span>
+              <input
+                type="time"
+                value={slot.end}
+                onChange={(e) => updateTimeSlot(index, 'end', e.target.value)}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2"
+                style={{ focusRingColor: theme.colors.accent[500] }}
+              />
+              {timeSlots.length > 1 && (
+                <button onClick={() => removeTimeSlot(index)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+          ))}
+
+          <button onClick={addTimeSlot} className="w-full py-2 mb-6 rounded-lg border-2 border-dashed border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors flex items-center justify-center gap-2">
+            <Plus className="w-5 h-5" />
+            Add Time Slot
+          </button>
+
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Valid From</label>
+              <input
+                type="date"
+                value={validPeriod.from}
+                onChange={(e) => setValidPeriod({...validPeriod, from: e.target.value})}
+                className="w-full px-4 py-2 rounded-lg border border-gray-200"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Valid Until</label>
+              <input
+                type="date"
+                value={validPeriod.until}
+                onChange={(e) => setValidPeriod({...validPeriod, until: e.target.value})}
+                className="w-full px-4 py-2 rounded-lg border border-gray-200"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={saveAvailability}
+            disabled={loading}
+            className="w-full py-3 rounded-xl text-white font-semibold transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+            style={{ background: `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})` }}
+          >
+            {loading ? 'Saving...' : 'Save Availability'}
+          </button>
+        </motion.div>
+
+        {/* Current Schedules */}
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">Your Schedules</h2>
+          
+          <div className="space-y-3 max-h-[600px] overflow-y-auto">
             {schedules.length === 0 ? (
-              <p style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.gray[500] }}>No schedules created yet. Select working days to get started.</p>
+              <div className="text-center py-12">
+                <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-500">No schedules yet</p>
+                <p className="text-sm text-gray-400 mt-1">Set your availability to get started</p>
+              </div>
             ) : (
-              schedules.map((schedule, i) => (
-                <div key={i} style={{
-                  padding: theme.spacing.sm,
-                  borderRadius: theme.borderRadius.lg,
-                  backgroundColor: schedule.isActive ? theme.colors.primary[50] : theme.colors.gray[50],
-                  border: `1px solid ${schedule.isActive ? theme.colors.primary[200] : theme.colors.gray[200]}`
-                }}>
-                  {editingSchedule === schedule.id ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.xs }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-                        <div style={{
-                          width: '12px',
-                          height: '12px',
-                          borderRadius: '50%',
-                          backgroundColor: editForm.isActive ? '#10B981' : theme.colors.gray[400]
-                        }}></div>
-                        <p style={{ fontWeight: '600', textTransform: 'capitalize', color: theme.colors.gray[900] }}>{schedule.dayOfWeek}</p>
-                      </div>
-                      
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.xs }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, fontWeight: '600', marginBottom: '2px', color: theme.colors.gray[600] }}>Start</label>
-                          <input
-                            type="time"
-                            value={editForm.startTime}
-                            onChange={(e) => setEditForm({...editForm, startTime: e.target.value})}
-                            style={{
-                              width: '100%',
-                              padding: '6px',
-                              borderRadius: theme.borderRadius.md,
-                              border: `1px solid ${theme.colors.gray[200]}`,
-                              fontSize: theme.typography.fontSize.sm
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, fontWeight: '600', marginBottom: '2px', color: theme.colors.gray[600] }}>End</label>
-                          <input
-                            type="time"
-                            value={editForm.endTime}
-                            onChange={(e) => setEditForm({...editForm, endTime: e.target.value})}
-                            style={{
-                              width: '100%',
-                              padding: '6px',
-                              borderRadius: theme.borderRadius.md,
-                              border: `1px solid ${theme.colors.gray[200]}`,
-                              fontSize: theme.typography.fontSize.sm
-                            }}
-                          />
-                        </div>
-                      </div>
-                      
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: theme.spacing.xs }}>
-                        <div>
-                          <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, fontWeight: '600', marginBottom: '2px', color: theme.colors.gray[600] }}>From</label>
-                          <input
-                            type="date"
-                            value={editForm.validFrom}
-                            onChange={(e) => setEditForm({...editForm, validFrom: e.target.value})}
-                            style={{
-                              width: '100%',
-                              padding: '6px',
-                              borderRadius: theme.borderRadius.md,
-                              border: `1px solid ${theme.colors.gray[200]}`,
-                              fontSize: theme.typography.fontSize.sm
-                            }}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: theme.typography.fontSize.xs, fontWeight: '600', marginBottom: '2px', color: theme.colors.gray[600] }}>Until</label>
-                          <input
-                            type="date"
-                            value={editForm.validUntil}
-                            onChange={(e) => setEditForm({...editForm, validUntil: e.target.value})}
-                            style={{
-                              width: '100%',
-                              padding: '6px',
-                              borderRadius: theme.borderRadius.md,
-                              border: `1px solid ${theme.colors.gray[200]}`,
-                              fontSize: theme.typography.fontSize.sm
-                            }}
-                          />
-                        </div>
-                      </div>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-                        <input
-                          type="checkbox"
-                          id={`active-${schedule.id}`}
-                          checked={editForm.isActive}
-                          onChange={(e) => setEditForm({...editForm, isActive: e.target.checked})}
-                        />
-                        <label htmlFor={`active-${schedule.id}`} style={{ fontSize: theme.typography.fontSize.sm, fontWeight: '600', color: theme.colors.gray[700] }}>Active</label>
-                      </div>
-                      
-                      <div style={{ display: 'flex', gap: theme.spacing.xs }}>
-                        <button
-                          onClick={() => updateIndividualSchedule(schedule.id)}
-                          style={{
-                            flex: 1,
-                            padding: '6px 12px',
-                            borderRadius: theme.borderRadius.md,
-                            backgroundColor: theme.colors.primary[600],
-                            color: theme.colors.white,
-                            fontWeight: '600',
-                            fontSize: theme.typography.fontSize.sm,
-                            border: 'none',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          style={{
-                            flex: 1,
-                            padding: '6px 12px',
-                            borderRadius: theme.borderRadius.md,
-                            backgroundColor: theme.colors.gray[200],
-                            color: theme.colors.gray[700],
-                            fontWeight: '600',
-                            fontSize: theme.typography.fontSize.sm,
-                            border: 'none',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
+              schedules.map((schedule) => (
+                <div key={schedule.id} className="p-4 rounded-xl border border-gray-200 hover:shadow-md transition-all">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${schedule.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
+                      <span className="font-semibold text-gray-900 capitalize">{schedule.dayOfWeek}</span>
                     </div>
-                  ) : (
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.xs }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: theme.spacing.xs }}>
-                          <div style={{
-                            width: '12px',
-                            height: '12px',
-                            borderRadius: '50%',
-                            backgroundColor: schedule.isActive ? '#10B981' : theme.colors.gray[400]
-                          }}></div>
-                          <p style={{ fontWeight: '600', textTransform: 'capitalize', color: theme.colors.gray[900] }}>{schedule.dayOfWeek}</p>
-                        </div>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <button
-                            onClick={() => startEditSchedule(schedule)}
-                            style={{
-                              padding: '6px',
-                              borderRadius: theme.borderRadius.md,
-                              backgroundColor: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: theme.colors.primary[600]
-                            }}
-                            title="Edit"
-                          >
-                            <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => deleteIndividualSchedule(schedule.id)}
-                            style={{
-                              padding: '6px',
-                              borderRadius: theme.borderRadius.md,
-                              backgroundColor: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: '#DC2626'
-                            }}
-                            title="Delete"
-                          >
-                            <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      <p style={{ fontSize: theme.typography.fontSize.sm, color: theme.colors.gray[600], marginBottom: theme.spacing.xs }}>{schedule.startTime} - {schedule.endTime}</p>
-                      <p style={{ fontSize: theme.typography.fontSize.xs, color: theme.colors.gray[500], marginBottom: theme.spacing.xs }}>{schedule.validFrom} to {schedule.validUntil}</p>
-                      <span style={{
-                        display: 'inline-block',
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        fontSize: theme.typography.fontSize.xs,
-                        fontWeight: '600',
-                        backgroundColor: schedule.isActive ? '#D1FAE5' : theme.colors.gray[100],
-                        color: schedule.isActive ? '#065F46' : theme.colors.gray[600]
-                      }}>
-                        {schedule.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  )}
+                    <button onClick={() => deleteSchedule(schedule.id)} className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">{schedule.startTime} - {schedule.endTime}</p>
+                  <p className="text-xs text-gray-500">{schedule.validFrom} to {schedule.validUntil}</p>
                 </div>
               ))
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   )

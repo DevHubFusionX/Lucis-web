@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import Image from 'next/image'
 import TopBar from './TopBar'
 import { theme } from '../../lib/theme'
 import { 
@@ -10,7 +11,7 @@ import {
   Briefcase, 
   Package, 
   Calendar, 
-  Image, 
+  Image as ImageIcon, 
   Clock, 
   Star, 
   Bell, 
@@ -31,7 +32,7 @@ export default function DashboardLayout({ children }) {
     { name: 'Portfolio', href: '/photographer/portfolio', icon: Briefcase },
     { name: 'Packages', href: '/photographer/packages', icon: Package },
     { name: 'Bookings', href: '/photographer/bookings', icon: Calendar },
-    { name: 'Gallery', href: '/photographer/gallery', icon: Image },
+    { name: 'Gallery', href: '/photographer/gallery', icon: ImageIcon },
     { name: 'Availability', href: '/photographer/availability', icon: Clock },
     { name: 'Reviews', href: '/photographer/reviews', icon: Star }
   ]
@@ -73,23 +74,7 @@ export default function DashboardLayout({ children }) {
       >
         {/* Logo Area */}
         <div className="flex items-center h-20 px-6 border-b border-gray-200">
-          <div 
-            className="w-10 h-10 rounded-xl flex items-center justify-center mr-3"
-            style={{ 
-              background: `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})` 
-            }}
-          >
-            <Camera className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 
-              className="font-bold text-xl text-gray-900"
-              style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
-            >
-              Lucis
-            </h1>
-            <p className="text-xs text-gray-500">Professional</p>
-          </div>
+          <Image src="/Logo/topbar.svg" alt="Lucis" width={120} height={32} className="h-48 w-auto" />
           <button 
             className="lg:hidden ml-auto text-gray-400 hover:text-gray-600 transition-colors" 
             onClick={() => setSidebarOpen(false)}
@@ -267,7 +252,7 @@ export default function DashboardLayout({ children }) {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        <TopBar onMenuClick={() => setSidebarOpen(true)} sidebarOpen={sidebarOpen} />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-8">

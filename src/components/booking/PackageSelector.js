@@ -1,110 +1,73 @@
 'use client'
-import { theme } from '../../lib/theme'
+import { Check } from 'lucide-react'
 
 export default function PackageSelector({
-  packages,
-  loading,
-  selectedPackages,
-  selectPackage
+  packages, loading, selectedPackages, selectPackage, theme
 }) {
+  const primaryColor = theme?.colors?.primary?.[800] || '#1F3A5F'
+
   return (
-    <div>
-      <h3 style={{
-        fontSize: theme.typography.fontSize.lg,
-        fontWeight: '600',
-        color: theme.colors.gray[900],
-        marginBottom: theme.spacing.sm
-      }}>Select Package</h3>
+    <div className="space-y-3">
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl }}>
-          <div style={{
-            width: '24px',
-            height: '24px',
-            border: `2px solid ${theme.colors.primary[800]}`,
-            borderTop: '2px solid transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <span style={{ marginLeft: theme.spacing.xs, color: theme.colors.gray[600] }}>Loading packages...</span>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-gray-50 rounded-xl animate-pulse border border-gray-100" />
+          ))}
         </div>
       ) : packages.length > 0 ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
-          {packages.map((pkg) => (
-            <div
-              key={pkg.id}
-              onClick={() => selectPackage(pkg.id)}
-              style={{
-                padding: theme.spacing.sm,
-                borderRadius: theme.borderRadius.lg,
-                border: `2px solid ${selectedPackages.includes(pkg.id) ? theme.colors.primary[800] : theme.colors.gray[200]}`,
-                backgroundColor: selectedPackages.includes(pkg.id) ? theme.colors.primary[50] : theme.colors.white,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: theme.spacing.sm
-              }}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  borderRadius: '50%',
-                  border: `2px solid ${selectedPackages.includes(pkg.id) ? theme.colors.primary[800] : theme.colors.gray[300]}`,
-                  backgroundColor: selectedPackages.includes(pkg.id) ? theme.colors.primary[800] : 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  {selectedPackages.includes(pkg.id) && (
-                    <svg style={{ width: '12px', height: '12px', color: theme.colors.white }} fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
+        <div className="space-y-3">
+          {packages.map((pkg) => {
+            const isSelected = selectedPackages.includes(pkg.id)
+            return (
+              <div
+                key={pkg.id}
+                onClick={() => selectPackage(pkg.id)}
+                className={`relative group cursor-pointer rounded-xl p-4 border-2 transition-all duration-300 flex items-center justify-between gap-4 text-left hover:border-gray-300`}
+                style={{
+                  borderColor: isSelected ? primaryColor : 'transparent',
+                  backgroundColor: isSelected ? theme?.colors?.primary?.[50] : '#ffffff',
+                  boxShadow: isSelected ? `0 4px 12px -2px ${theme?.colors?.primary?.[100]}` : '0 1px 2px rgba(0,0,0,0.05)'
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                        <h4 className="font-bold text-gray-900 text-base">{pkg.name}</h4>
+                        {pkg.isPopular && (
+                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] uppercase font-bold tracking-wider rounded-full">
+                                Popular
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs text-gray-500 line-clamp-1">{pkg.description}</p>
+                    <div className="mt-1.5 text-xs font-medium text-gray-400">
+                        Duration: {pkg.duration} mins
+                    </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontWeight: '600',
-                    color: theme.colors.gray[900],
-                    fontSize: theme.typography.fontSize.base
-                  }}>{pkg.name}</div>
-                  <div style={{
-                    color: theme.colors.gray[600],
-                    fontSize: theme.typography.fontSize.sm,
-                    marginTop: '2px'
-                  }}>{pkg.description}</div>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: theme.spacing.sm,
-                    marginTop: theme.spacing.xs
-                  }}>
-                    <span style={{
-                      fontWeight: '700',
-                      color: theme.colors.primary[800],
-                      fontSize: theme.typography.fontSize.lg
-                    }}>${pkg.price}</span>
-                    <span style={{
-                      color: theme.colors.gray[500],
-                      fontSize: theme.typography.fontSize.xs
-                    }}>{pkg.duration} min • {pkg.type}</span>
+
+                <div className="flex flex-col items-end gap-1">
+                  <div className="text-lg font-display font-medium text-gray-900">
+                    ₦{pkg.price}
+                  </div>
+                  <div 
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors`}
+                    style={{
+                      borderColor: isSelected ? primaryColor : '#d1d5db',
+                      backgroundColor: isSelected ? primaryColor : 'transparent'
+                    }}
+                  >
+                    {isSelected && <Check size={12} className="text-white" />}
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       ) : (
-        <div style={{
-          textAlign: 'center',
-          padding: theme.spacing.xl,
-          color: theme.colors.gray[500]
-        }}>
-          <div style={{ fontSize: theme.typography.fontSize.sm }}>No packages available</div>
-          <div style={{ fontSize: theme.typography.fontSize.xs }}>Contact the professional directly</div>
+        <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+           <p className="text-gray-500 font-medium">No packages available</p>
         </div>
       )}
     </div>
   )
 }
+

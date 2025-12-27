@@ -1,198 +1,506 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { 
+  Search, MapPin, SlidersHorizontal, Star, 
+  ChevronDown, X, Check, Heart, Camera,
+  Calendar, ArrowRight
+} from 'lucide-react'
 import searchService from '../../../../services/searchService'
+import favoriteService from '../../../../services/client/favoriteService'
 import BookingModal from '../../../../components/BookingModal'
+import PhotographerInfoModal from '../../../../components/PhotographerInfoModal'
 import ContactModal from '../../../../components/ContactModal'
-import SearchHeader from '../../../../components/search/SearchHeader'
-import SearchFilters from '../../../../components/search/SearchFilters'
-import SearchResults from '../../../../components/search/SearchResults'
+
+// Theme Import
 import { theme } from '../../../../lib/theme'
 
+// Premium filter component
+const FilterSection = ({ title, children }) => (
+  <div className="mb-8">
+    <h3 className="text-sm font-bold uppercase tracking-wider mb-4" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>{title}</h3>
+    {children}
+  </div>
+)
+
+const CheckboxFilter = ({ label, checked, onChange }) => (
+  <label className="flex items-center gap-3 cursor-pointer group py-2">
+    <div 
+      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${checked ? 'border-transparent' : 'border-gray-300 group-hover:border-gray-400 bg-white'}`}
+      style={checked ? { backgroundColor: theme.colors.accent[500] } : {}}
+    >
+      <Check size={12} className={`text-white transition-opacity ${checked ? 'opacity-100' : 'opacity-0'}`} strokeWidth={4} />
+    </div>
+    <span className={`text-sm font-medium transition-colors ${checked ? 'text-gray-900' : 'text-gray-600 group-hover:text-gray-900'}`}>{label}</span>
+  </label>
+)
+
 export default function SearchPage() {
-  const [searchState, setSearchState] = useState({
-    query: '',
-    loading: true,
-    professionals: [],
-    location: null
-  })
-  
-  const [uiState, setUiState] = useState({
-    viewMode: 'grid',
-    showFilters: false,
-    showBookingModal: false,
-    showContactModal: false
-  })
-  
+  const [loading, setLoading] = useState(true)
+  const [professionals, setProfessionals] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState({
     services: [],
     radius: 50,
-    dayOfWeek: '',
-    limit: 20,
-    active: []
+    priceRange: [0, 1000],
+    rating: null
   })
+  const [location, setLocation] = useState(null)
+  const [favorites, setFavorites] = useState([])
+  const [favoritingId, setFavoritingId] = useState(null)
   
-  const [selectedProfessional, setSelectedProfessional] = useState(null)
+  // Modals state
+  const [selectedPro, setSelectedPro] = useState(null)
+  const [modalState, setModalState] = useState({
+    info: false,
+    booking: false,
+    contact: false
+  })
 
-  const getCurrentLocation = () => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation not supported'))
-        return
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
+
+  // Fetch location and initial data
+  useEffect(() => {
+    const init = async () => {
+      try {
+        setLoading(true)
+        // Try to get location, fallback to NY
+        const loc = await new Promise((resolve) => {
+          if (!navigator.geolocation) return resolve({ latitude: 40.7128, longitude: -74.0060 })
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+            () => resolve({ latitude: 40.7128, longitude: -74.0060 })
+          )
+        })
+        setLocation(loc)
+        
+        // Initial search and favorites
+        const [results, favs] = await Promise.all([
+          searchService.searchProfessionals({
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            radius: filters.radius,
+            limit: 20
+          }),
+          favoriteService.getFavorites()
+        ])
+        setProfessionals(results || [])
+        setFavorites(Array.isArray(favs) ? favs : [])
+      } catch (err) {
+        console.error('Init failed:', err)
+      } finally {
+        setLoading(false)
       }
-      
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          })
-        },
-        (error) => {
-          console.warn('Geolocation error:', error)
-          // Fallback to default location (New York)
-          resolve({
-            latitude: 40.7128,
-            longitude: -74.0060
-          })
-        }
-      )
-    })
-  }
+    }
+    init()
+  }, []) // Run once on mount
 
-  const searchProfessionals = async () => {
-    setSearchState(prev => ({ ...prev, loading: true }))
+  // Handle Search
+  const handleSearch = async () => {
+    if (!location) return
+    setLoading(true)
     try {
-      const userLocation = searchState.location || await getCurrentLocation()
-      if (!searchState.location) {
-        setSearchState(prev => ({ ...prev, location: userLocation }))
-      }
-      
-      const searchResults = await searchService.searchProfessionals({
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
+      const results = await searchService.searchProfessionals({
+        latitude: location.latitude,
+        longitude: location.longitude,
         radius: filters.radius,
-        dayOfWeek: filters.dayOfWeek,
-        limit: filters.limit,
-        _token: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        limit: 20,
       })
-      setSearchState(prev => ({ ...prev, professionals: searchResults }))
-    } catch (error) {
-      console.error('Search failed:', error)
-      setSearchState(prev => ({ ...prev, professionals: [] }))
+      
+      let filtered = results || []
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        filtered = filtered.filter(p => 
+          p.firstName?.toLowerCase().includes(q) || 
+          p.lastName?.toLowerCase().includes(q) ||
+          p.specialty?.toLowerCase().includes(q)
+        )
+      }
+      
+      setProfessionals(filtered)
+    } catch (err) {
+      console.error('Search failed:', err)
     } finally {
-      setSearchState(prev => ({ ...prev, loading: false }))
+      setLoading(false)
     }
   }
 
-  useEffect(() => {
-    searchProfessionals()
-  }, [])
-
-  useEffect(() => {
-    if (searchState.location) {
-      searchProfessionals()
-    }
-  }, [filters.radius, filters.dayOfWeek, filters.limit])
-
-  const removeFilter = (filter) => {
-    setFilters(prev => ({ ...prev, active: prev.active.filter(f => f !== filter) }))
-  }
-
-  const handleBookNow = (professional) => {
-    setSelectedProfessional(professional)
-    setUiState(prev => ({ ...prev, showBookingModal: true }))
-  }
-
-  const handleBookingSuccess = () => {
+  // Interaction Handlers
+  const toggleFavorite = async (e, proId) => {
+    e.stopPropagation()
+    if (favoritingId) return
+    
+    setFavoritingId(proId)
     try {
-      // Refresh professionals or show success message
-      console.log('Booking successful!')
-      setUiState(prev => ({ ...prev, showBookingModal: false }))
-    } catch (error) {
-      console.error('Error handling booking success:', error)
+      const existingFavorite = favorites.find(f => f.professionalId === proId)
+      if (existingFavorite) {
+        await favoriteService.removeFavorite(existingFavorite.id)
+        setFavorites(prev => prev.filter(f => f.id !== existingFavorite.id))
+      } else {
+        const response = await favoriteService.addFavorite(proId)
+        if (response && response.data) {
+          setFavorites(prev => [...prev, response.data])
+        } else {
+          // Fallback if response doesn't return the new favorite object as expected
+          const updatedFavs = await favoriteService.getFavorites()
+          setFavorites(updatedFavs)
+        }
+      }
+    } catch (err) {
+      console.error('Toggle favorite failed:', err)
+    } finally {
+      setFavoritingId(null)
     }
   }
 
-  const handleMessage = (professional) => {
-    setSelectedProfessional(professional)
-    setUiState(prev => ({ ...prev, showContactModal: true }))
+  const openProfile = async (pro) => {
+    setSelectedPro(pro)
+    setModalState(prev => ({ ...prev, info: true }))
+    
+    try {
+      const details = await searchService.getProfile(pro.id)
+      setSelectedPro(details)
+    } catch (err) {
+      console.error('Failed to fetch profile:', err)
+    }
   }
-
-  const { loading, professionals, location } = searchState
-  const { viewMode, showBookingModal, showContactModal } = uiState
 
   return (
-    <div className="space-y-6">
-      {/* Search Bar - Primary Focus */}
-      <SearchHeader 
-        query={searchState.query}
-        setQuery={(query) => setSearchState(prev => ({ ...prev, query }))}
-        toggleFilters={() => setUiState(prev => ({ ...prev, showFilters: !prev.showFilters }))}
-      />
-
-      {/* Active Filters Tags */}
-      {filters.active.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium" style={{color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ')}}>Active filters:</span>
-          {filters.active.map((filter, i) => (
-            <span key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium" style={{backgroundColor: theme.colors.primary[100], color: theme.colors.primary[800], fontFamily: theme.typography.fontFamily.sans.join(', ')}}>
-              {filter}
-              <button onClick={() => removeFilter(filter)} className="hover:opacity-70">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </span>
-          ))}
-          <button className="text-sm font-semibold hover:underline" style={{color: '#DC2626', fontFamily: theme.typography.fontFamily.sans.join(', ')}}>Clear all</button>
-        </div>
-      )}
-
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Filter Sidebar */}
-        <SearchFilters 
-          filters={filters}
-          setFilters={setFilters}
-          showFilters={uiState.showFilters}
-        />
-
-        {/* Results Section */}
-        <SearchResults 
-          loading={loading}
-          professionals={professionals}
-          location={location}
-          viewMode={viewMode}
-          setViewMode={(mode) => setUiState(prev => ({ ...prev, viewMode: mode }))}
-          handleBookNow={handleBookNow}
-          handleMessage={handleMessage}
-        />
+    <div className="flex flex-col md:flex-row font-sans" style={{ fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
+      
+      {/* Mobile Filter Toggle */}
+      <div className="md:hidden sticky top-4 z-50 px-4 pt-4">
+        <button 
+          onClick={() => setShowMobileFilters(true)}
+          className="w-full text-white px-8 py-4 rounded-full font-bold shadow-2xl flex items-center justify-center gap-2 min-h-[48px] active:scale-95 transition-transform"
+          style={{ backgroundColor: theme.colors.primary[900] }}
+        >
+          <SlidersHorizontal size={20} />
+          <span className="text-base">Filters</span>
+        </button>
       </div>
 
-      {/* Booking Modal */}
-      {selectedProfessional && (
-        <BookingModal
-          professional={selectedProfessional}
-          isOpen={showBookingModal}
-          onClose={() => {
-            setUiState(prev => ({ ...prev, showBookingModal: false }))
-            setSelectedProfessional(null)
-          }}
-          onSuccess={handleBookingSuccess}
-        />
-      )}
+      {/* Mobile Backdrop for Filters */}
+      <AnimatePresence>
+        {showMobileFilters && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowMobileFilters(false)}
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Contact Modal */}
-      {selectedProfessional && (
-        <ContactModal
-          professional={selectedProfessional}
-          isOpen={showContactModal}
-          onClose={() => {
-            setUiState(prev => ({ ...prev, showContactModal: false }))
-            setSelectedProfessional(null)
-          }}
-        />
-      )}
+      {/* Sidebar Filters */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-full sm:w-80 bg-white border-r border-gray-100 transform transition-transform duration-300 md:translate-x-0 md:relative md:block ${showMobileFilters ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="h-full overflow-y-auto p-8">
+          <div className="flex items-center justify-between mb-8 md:hidden">
+            <h2 className="text-xl font-bold" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>Filters</h2>
+            <button onClick={() => setShowMobileFilters(false)}><X /></button>
+          </div>
+
+          <div className="space-y-8">
+            <FilterSection title="Service Type">
+              {['Wedding', 'Portrait', 'Event', 'Fashion', 'Product', 'Real Estate'].map(service => (
+                <CheckboxFilter 
+                  key={service}
+                  label={service} 
+                  checked={filters.services.includes(service)}
+                  onChange={() => {
+                    setFilters(prev => ({
+                      ...prev,
+                      services: prev.services.includes(service) 
+                        ? prev.services.filter(s => s !== service)
+                        : [...prev.services, service]
+                    }))
+                  }} 
+                />
+              ))}
+            </FilterSection>
+
+            <FilterSection title="Distance">
+              <div className="px-2">
+                <input 
+                  type="range" 
+                  min="5" max="100" step="5"
+                  value={filters.radius}
+                  onChange={(e) => setFilters(prev => ({ ...prev, radius: parseInt(e.target.value) }))}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  style={{ accentColor: theme.colors.primary[900] }}
+                />
+                <div className="flex justify-between mt-2 text-xs font-bold text-gray-400">
+                  <span>5 mi</span>
+                  <span>{filters.radius} mi</span>
+                  <span>100 mi</span>
+                </div>
+              </div>
+            </FilterSection>
+
+            <FilterSection title="Rating">
+               {[5, 4, 3].map(rating => (
+                 <label key={rating} className="flex items-center gap-3 cursor-pointer group py-2">
+                   <input 
+                     type="radio" 
+                     name="rating"
+                     className="appearance-none w-5 h-5 rounded-full border-2 border-gray-300 checked:border-[6px] transition-all"
+                     style={{ borderColor: filters.rating === rating ? theme.colors.accent[500] : undefined }}
+                     onChange={() => setFilters(prev => ({ ...prev, rating }))}
+                     checked={filters.rating === rating}
+                   />
+                   <div className="flex items-center gap-1">
+                     {[...Array(rating)].map((_, i) => (
+                       <Star key={i} size={14} className="fill-current" style={{ color: theme.colors.accent[500] }} />
+                     ))}
+                     <span className="text-sm font-medium text-gray-400 group-hover:text-gray-600 transition-colors">& Up</span>
+                   </div>
+                 </label>
+               ))}
+            </FilterSection>
+          </div>
+
+          <div className="pt-8 mt-8 border-t border-gray-100">
+            <button 
+              onClick={() => {
+                handleSearch()
+                setShowMobileFilters(false)
+              }}
+              disabled={loading}
+              className="w-full text-white py-4 rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              style={{ backgroundColor: theme.colors.primary[900] }}
+            >
+              {loading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  Applying...
+                </>
+              ) : (
+                'Apply Filters'
+              )}
+            </button>
+            <button 
+              onClick={() => {
+                setFilters({ services: [], radius: 50, priceRange: [0, 1000], rating: null })
+                setShowMobileFilters(false)
+              }}
+              className="w-full text-center py-3 text-sm font-bold text-gray-500 hover:text-gray-900 mt-2"
+            >
+              Reset All
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 min-w-0">
+        <div className="p-4 sm:p-6 md:p-10 max-w-7xl mx-auto md:pb-10">
+          
+          {/* Header Search */}
+          <div className="flex flex-col gap-3 mb-6 sm:mb-8 md:mb-10">
+            <div className="bg-white p-4 sm:p-3 rounded-2xl shadow-sm border border-gray-200 transition-shadow focus-within:shadow-md focus-within:border-gray-300">
+              <div className="flex items-center gap-3 mb-3 sm:mb-0">
+                <div className="text-gray-400"><Search size={20} /></div>
+                <input 
+                  type="text"
+                  placeholder="Search photographers..."
+                  className="flex-1 bg-transparent py-2 sm:py-3 outline-none text-base text-gray-900 font-medium placeholder-gray-400"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                />
+              </div>
+              
+              <div className="flex items-center gap-3 pt-3 border-t border-gray-100 sm:border-t-0 sm:pt-0">
+                <MapPin size={18} className="text-gray-400 shrink-0" />
+                <span className="text-sm font-medium text-gray-600 truncate flex-1">
+                   {location ? 'Current Location' : 'New York, NY'}
+                </span>
+                <button 
+                  onClick={handleSearch}
+                  disabled={loading}
+                  className="text-white px-6 py-3 rounded-xl text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 whitespace-nowrap min-h-[44px] active:scale-95"
+                  style={{ backgroundColor: theme.colors.accent[500] }}
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Searching...</span>
+                    </>
+                  ) : (
+                    'Search'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+             <div className="flex flex-col gap-5 md:gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-white rounded-2xl sm:rounded-3xl h-auto md:h-64 flex flex-col md:flex-row overflow-hidden border border-gray-100 animate-pulse">
+                     <div className="h-56 md:h-full md:w-80 bg-gray-200 shrink-0"></div>
+                     <div className="flex-1 p-5 md:p-6 flex flex-col justify-center space-y-4">
+                          <div className="flex justify-between">
+                            <div className="space-y-2 w-1/2">
+                              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                              <div className="h-7 bg-gray-200 rounded w-3/4"></div>
+                            </div>
+                            <div className="h-10 w-10 bg-gray-200 rounded-full"></div>
+                          </div>
+                          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                          <div className="flex gap-3 pt-4 mt-auto">
+                            <div className="h-12 bg-gray-200 rounded-xl flex-1"></div>
+                            <div className="h-12 bg-gray-200 rounded-xl flex-1"></div>
+                          </div>
+                     </div>
+                  </div>
+                ))}
+             </div>
+          ) : professionals.length === 0 ? (
+            <div className="text-center py-20">
+               <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-400">
+                 <Camera size={32} />
+               </div>
+               <h2 className="text-2xl font-bold text-gray-900 mb-2" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>No professionals found</h2>
+               <p className="text-gray-500">Try adjusting your filters or search radius.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-5 md:space-y-6">
+               {professionals.map((pro) => (
+                 <motion.div 
+                   key={pro.id}
+                   initial={{ opacity: 0, y: 20 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   className="group bg-white rounded-2xl sm:rounded-3xl border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col md:flex-row"
+                 >
+                   {/* Cover Image Area */}
+                   <div className="relative h-56 md:h-auto md:w-80 shrink-0 bg-gray-200 overflow-hidden">
+                      <img 
+                        src={pro.coverImage?.url || "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80"}
+                        alt="Cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:bg-gradient-to-r md:from-black/40"></div>
+                      
+                      {/* Mobile Rating Badge */}
+                      <div className="absolute bottom-4 left-4 md:hidden">
+                         <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg text-white text-sm font-bold">
+                           <Star size={14} className="fill-white" />
+                           {pro.rating || '5.0'}
+                         </div>
+                      </div>
+
+                       <button 
+                         onClick={(e) => toggleFavorite(e, pro.id)}
+                         disabled={favoritingId === pro.id}
+                         className={`absolute top-4 right-4 p-2.5 backdrop-blur-md rounded-full transition-all active:scale-90 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                           favorites.some(f => f.professionalId === pro.id) 
+                             ? 'bg-white text-red-500 shadow-md' 
+                             : 'bg-white/10 text-white hover:bg-white hover:text-red-500'
+                         }`}
+                       >
+                         {favoritingId === pro.id ? (
+                           <div className="w-5 h-5 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
+                         ) : (
+                           <Heart 
+                             size={20} 
+                             fill={favorites.some(f => f.professionalId === pro.id) ? "currentColor" : "none"} 
+                           />
+                         )}
+                       </button>
+                   </div>
+
+                   {/* Card Body */}
+                   <div className="flex-1 p-5 md:p-6 lg:p-8 flex flex-col">
+                      <div className="flex justify-between items-start mb-3">
+                         <div className="flex-1 min-w-0">
+                           <p className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: theme.colors.primary[600] }}>
+                             {pro.specialty || 'Photographer'}
+                           </p>
+                           <h3 className="text-gray-900 text-xl md:text-2xl font-bold leading-tight truncate" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+                             {pro.firstName} {pro.lastName}
+                           </h3>
+                         </div>
+                         <div 
+                           className="hidden md:flex items-center gap-1.5 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm ml-3 shrink-0"
+                           style={{ backgroundColor: theme.colors.accent[500] }}
+                         >
+                            <Star size={14} className="fill-white" />
+                            {pro.rating || '5.0'}
+                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 md:gap-6 mb-5 md:mb-6 text-sm text-gray-500 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin size={16} className="text-gray-400" />
+                          <span className="truncate">{pro.distance ? `${pro.distance.toFixed(1)} mi` : 'Nearby'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Check size={16} style={{ color: theme.colors.accent[500] }} />
+                          <span>{pro.completedBookings || 0} Bookings</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1"></div>
+
+                      <div className="grid grid-cols-2 gap-3 md:flex md:justify-end md:gap-4 mt-4 pt-4 md:pt-6 border-t border-gray-100">
+                         <button 
+                           onClick={() => openProfile(pro)}
+                           className="py-3 px-4 md:px-6 rounded-xl font-bold text-sm bg-gray-50 text-gray-900 hover:bg-gray-100 transition-all active:scale-95 min-h-[48px]"
+                         >
+                           View Profile
+                         </button>
+                         <button 
+                           onClick={() => {
+                             setSelectedPro(pro)
+                             setModalState(prev => ({ ...prev, booking: true }))
+                           }}
+                           className="py-3 px-4 md:px-8 rounded-xl font-bold text-sm text-white hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-gray-200 min-h-[48px]"
+                           style={{ backgroundColor: theme.colors.primary[900] }}
+                         >
+                           Book Now
+                           <ArrowRight size={16} className="hidden sm:block" />
+                         </button>
+                      </div>
+                   </div>
+                 </motion.div>
+               ))}
+            </div>
+          )}
+
+        </div>
+      </main>
+
+      {/* Modals */}
+      <AnimatePresence>
+        {modalState.info && selectedPro && (
+          <PhotographerInfoModal
+            photographer={selectedPro}
+            isOpen={modalState.info}
+            onClose={() => setModalState(prev => ({ ...prev, info: false }))}
+            onBookNow={() => setModalState(prev => ({ ...prev, info: false, booking: true }))}
+          />
+        )}
+        
+        {modalState.booking && selectedPro && (
+          <BookingModal
+            professional={selectedPro}
+            isOpen={modalState.booking}
+            onClose={() => setModalState(prev => ({ ...prev, booking: false }))}
+            onSuccess={() => console.log('Booking success')}
+          />
+        )}
+        
+        {modalState.contact && selectedPro && (
+           <ContactModal 
+              professional={selectedPro}
+              isOpen={modalState.contact}
+              onClose={() => setModalState(prev => ({ ...prev, contact: false }))}
+           />
+        )}
+      </AnimatePresence>
+
     </div>
   )
 }

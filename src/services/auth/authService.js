@@ -8,7 +8,19 @@ class AuthService extends BaseApiService {
     const endpoint = userType === 'professional' ? '/auth/professionals/login' : '/auth/users/login'
     const sanitizedCredentials = sanitizeFormData(credentials)
     
+    console.log('🔐 Login Attempt:', {
+      userType,
+      endpoint,
+      credentials: { ...sanitizedCredentials, password: '***' }
+    })
+    
     const data = await this.post(endpoint, sanitizedCredentials)
+    
+    console.log('🔐 Login Response:', {
+      hasToken: !!data.data?.token,
+      hasUser: !!data.data?.user,
+      data: { ...data, data: { ...data.data, token: data.data?.token ? '***' : null } }
+    })
     
     if (data.data?.token) {
       storage.set('token', data.data.token)
@@ -23,15 +35,32 @@ class AuthService extends BaseApiService {
   async signup(userData, userType = 'client') {
     const endpoint = userType === 'professional' ? '/auth/professionals/sign-up' : '/auth/users/sign-up'
     
+    console.log('📝 AuthService.signup called:', {
+      userType,
+      endpoint,
+      userData: { ...userData, password: '***' }
+    })
+    
     const formData = this._buildSignupFormData(userData, userType)
     
+    console.log('📋 FormData built, entries:')
+    for (let [key, value] of formData.entries()) {
+      console.log(`  ${key}:`, key === 'password' ? '***' : value)
+    }
+    
+    console.log('📤 Calling http.upload...')
     const data = await this.http.upload(endpoint, formData)
+    console.log('📥 Upload response:', data)
     
     if (data.data?.token) {
+      console.log('✅ Token received, storing auth data...')
       storage.set('token', data.data.token)
       storage.set('user', data.data.user)
       storage.set('userType', userType)
       cookies.set('auth-token', data.data.token)
+      console.log('✅ Auth data stored successfully')
+    } else {
+      console.log('⚠️ No token in response')
     }
 
     return this.handleResponse(data, 'Signup failed')

@@ -1,3 +1,6 @@
+/**
+ * Simple in-memory API cache with TTL and pattern invalidation
+ */
 class ApiCache {
   constructor() {
     this.cache = new Map()

@@ -20,18 +20,32 @@ class ClientProfileService extends BaseApiService {
   }
 
   async uploadProfilePicture(file) {
+    // Step 1: Upload the file to get URL and publicId
     const formData = new FormData()
-    formData.append('photo', file)
+    formData.append('file', file)
     
-    const data = await this.http.upload('/users/profile-photo', formData)
+    const uploadResponse = await this.http.upload('/upload', formData)
+    
+    if (!uploadResponse.data || !uploadResponse.data.url || !uploadResponse.data.publicId) {
+      throw new Error('Failed to upload file')
+    }
+    
+    // Step 2: Update profile photo with the uploaded file info
+    const profilePhotoData = {
+      url: uploadResponse.data.url,
+      publicId: uploadResponse.data.publicId
+    }
+    
+    const data = await this.patch('/users/profile-photo', profilePhotoData)
     
     if (data.data) {
       const currentUser = storage.get('user')
       const updatedUser = { ...currentUser, profilePicture: data.data }
       storage.set('user', updatedUser)
+      this.cache.invalidate('/users/')
     }
 
-    return this.handleResponse(data, 'Failed to upload profile picture')
+    return this.handleResponse(data, 'Failed to update profile picture')
   }
 }
 

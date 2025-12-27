@@ -1,3 +1,6 @@
+/**
+ * LocalStorage wrapper with auto-parsing and error handling
+ */
 export const storage = {
   get: (key) => {
     if (typeof window === 'undefined') return null

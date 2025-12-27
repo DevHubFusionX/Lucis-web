@@ -6,6 +6,7 @@ import { useForm } from '../../hooks/useForm'
 import { validateLoginForm } from '../../utils/validation'
 import { theme } from '../../lib/theme'
 import authService from '../../services/auth/authService'
+import { useToast } from '../ui/Toast'
 
 export default function LoginForm ({
   formData,
@@ -17,6 +18,8 @@ export default function LoginForm ({
   const [submitError, setSubmitError] = useState('')
   const [focusedField, setFocusedField] = useState(null)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const { addToast } = useToast()
   const { values, errors, isSubmitting, setValue, handleSubmit } = useForm(
     { email: '', password: '', rememberMe: false },
     validateLoginForm
@@ -30,13 +33,19 @@ export default function LoginForm ({
       const result = await authService.googleLogin(credentialResponse.credential)
       console.log('Auth service result:', result)
       if (result.success) {
+        setShowSuccess(true)
+        addToast('Login successful! Redirecting...', 'success')
         await onSubmit({ email: result.data?.user?.email, password: '', isGoogle: true })
       } else {
-        setSubmitError(result.error || 'Google login failed')
+        const errorMsg = result.error || 'Google login failed'
+        setSubmitError(errorMsg)
+        addToast(errorMsg, 'error')
       }
     } catch (error) {
       console.error('Google login error:', error)
-      setSubmitError('Google login error. Please try again.')
+      const errorMsg = 'Google login error. Please try again.'
+      setSubmitError(errorMsg)
+      addToast(errorMsg, 'error')
     } finally {
       setIsGoogleLoading(false)
     }
@@ -44,7 +53,9 @@ export default function LoginForm ({
 
   const handleGoogleError = (error) => {
     console.error('Google login error:', error)
-    setSubmitError('Google login failed. Please try again.')
+    const errorMsg = 'Google login failed. Please try again.'
+    setSubmitError(errorMsg)
+    addToast(errorMsg, 'error')
   }
 
   const onFormSubmit = async formValues => {
@@ -52,13 +63,31 @@ export default function LoginForm ({
     const result = await onSubmit(formValues)
     if (!result.success && result.error) {
       setSubmitError(result.error)
+      addToast(result.error, 'error')
+    } else if (result.success) {
+      setShowSuccess(true)
+      addToast('Login successful! Redirecting...', 'success')
     }
     return result
   }
 
   return (
     <div className='flex items-center justify-center lg:col-span-1 col-span-1 min-h-screen'>
-      <div className='w-full max-w-md p-6 sm:p-10 animate-fadeIn'>
+      <div className='w-full max-w-md p-6 sm:p-10 animate-fadeIn relative'>
+        {/* Success Overlay */}
+        {showSuccess && (
+          <div className='absolute inset-0 bg-gradient-to-br from-green-500/95 to-emerald-600/95 rounded-2xl flex items-center justify-center z-50 animate-fadeIn backdrop-blur-sm'>
+            <div className='text-center space-y-4'>
+              <div className='w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto animate-scaleIn'>
+                <svg className='w-12 h-12 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={3} d='M5 13l4 4L19 7' />
+                </svg>
+              </div>
+              <h3 className='text-2xl font-bold text-white'>Success!</h3>
+              <p className='text-white/90'>Redirecting to your dashboard...</p>
+            </div>
+          </div>
+        )}
         {/* Logo */}
         <div className='flex items-center justify-center transform hover:scale-105 transition-transform duration-300'>
           <img src='/Logo/logo.svg' alt='Lucis Logo' className='h-auto w-42' />
@@ -451,12 +480,27 @@ export default function LoginForm ({
           }
         }
 
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.5);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
         .animate-fadeIn {
           animation: fadeIn 0.5s ease-out;
         }
 
         .animate-slideDown {
           animation: slideDown 0.3s ease-out;
+        }
+
+        .animate-scaleIn {
+          animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
       `}</style>
     </div>

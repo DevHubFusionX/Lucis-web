@@ -1,10 +1,31 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ProfessionalBookingService } from '../../../../services'
+import { theme } from '../../../../lib/theme'
+import Notification from '../../../../components/ui/Notification'
+import { 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  DollarSign, 
+  User, 
+  Mail, 
+  Phone, 
+  X, 
+  Check, 
+  MessageSquare,
+  Filter,
+  Search,
+  ChevronRight,
+  AlertCircle,
+  Loader2
+} from 'lucide-react'
 
 export default function BookingsPage() {
-  const [activeTab, setActiveTab] = useState('pending')
+  const [activeTab, setActiveTab] = useState('all')
   const [selectedBooking, setSelectedBooking] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const [bookings, setBookings] = useState({
     pending: [],
     confirmed: [],
@@ -12,300 +33,500 @@ export default function BookingsPage() {
     cancelled: []
   })
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const data = await ProfessionalBookingService.getBookings()
-        console.log('🔍 DEBUG: Raw bookings data:', data)
-        console.log('🔍 DEBUG: Bookings count:', data.length)
-        
-        // Log each booking's status
-        data.forEach((booking, index) => {
-          console.log(`🔍 DEBUG: Booking ${index + 1}:`, {
-            id: booking.id,
-            status: booking.status,
-            user: booking.user?.firstName + ' ' + booking.user?.lastName,
-            serviceType: booking.serviceType,
-            startDateTime: booking.startDateTime
-          })
-        })
-        
-        const groupedBookings = {
-          pending: data.filter(b => b.status === 'pending') || [],
-          confirmed: data.filter(b => b.status === 'accepted' || b.status === 'confirmed') || [],
-          completed: data.filter(b => b.status === 'completed') || [],
-          cancelled: data.filter(b => b.status === 'cancelled' || b.status === 'rejected') || []
-        }
-        
-        console.log('🔍 DEBUG: Grouped bookings:', {
-          pending: groupedBookings.pending.length,
-          confirmed: groupedBookings.confirmed.length,
-          completed: groupedBookings.completed.length,
-          cancelled: groupedBookings.cancelled.length
-        })
-        
-        setBookings(groupedBookings)
-      } catch (error) {
-        console.error('❌ Failed to fetch bookings:', error)
-        // Show empty bookings when API returns "Booking was not found"
-        setBookings({
-          pending: [],
-          confirmed: [],
-          completed: [],
-          cancelled: []
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchBookings()
   }, [])
 
-  const handleAcceptBooking = async (bookingId) => {
+  const addNotification = (type, title, message) => {
+    const id = Date.now()
+    setNotifications(prev => [...prev, { id, type, title, message }])
+    setTimeout(() => removeNotification(id), 5000)
+  }
+
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id))
+  }
+
+  const fetchBookings = async () => {
     try {
-      await ProfessionalBookingService.acceptBooking(bookingId)
-      // Refresh bookings after accepting
+      setLoading(true)
       const data = await ProfessionalBookingService.getBookings()
+      
+      console.log('📋 Fetched bookings:', data)
+      
       const groupedBookings = {
         pending: data.filter(b => b.status === 'pending') || [],
         confirmed: data.filter(b => b.status === 'accepted' || b.status === 'confirmed') || [],
         completed: data.filter(b => b.status === 'completed') || [],
         cancelled: data.filter(b => b.status === 'cancelled' || b.status === 'rejected') || []
       }
+      
       setBookings(groupedBookings)
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error)
+      addNotification('error', 'Error', 'Failed to load bookings. Please try again.')
+      setBookings({
+        pending: [],
+        confirmed: [],
+        completed: [],
+        cancelled: []
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAcceptBooking = async (bookingId) => {
+    try {
+      setActionLoading(true)
+      await ProfessionalBookingService.acceptBooking(bookingId)
+      addNotification('success', 'Booking Accepted', 'The booking has been successfully accepted.')
+      await fetchBookings()
       setSelectedBooking(null)
     } catch (error) {
       console.error('Failed to accept booking:', error)
-      alert('Failed to accept booking. Please try again.')
+      addNotification('error', 'Action Failed', 'Failed to accept booking. Please try again.')
+    } finally {
+      setActionLoading(false)
     }
   }
 
   const handleRejectBooking = async (bookingId) => {
     try {
+      setActionLoading(true)
       await ProfessionalBookingService.rejectBooking(bookingId)
-      // Refresh bookings after rejecting
-      const data = await ProfessionalBookingService.getBookings()
-      const groupedBookings = {
-        pending: data.filter(b => b.status === 'pending') || [],
-        confirmed: data.filter(b => b.status === 'accepted' || b.status === 'confirmed') || [],
-        completed: data.filter(b => b.status === 'completed') || [],
-        cancelled: data.filter(b => b.status === 'cancelled' || b.status === 'rejected') || []
-      }
-      setBookings(groupedBookings)
+      addNotification('info', 'Booking Declined', 'The booking has been declined.')
+      await fetchBookings()
       setSelectedBooking(null)
     } catch (error) {
       console.error('Failed to reject booking:', error)
-      alert('Failed to reject booking. Please try again.')
+      addNotification('error', 'Action Failed', 'Failed to decline booking. Please try again.')
+    } finally {
+      setActionLoading(false)
     }
   }
 
-  const tabs = ['pending', 'confirmed', 'completed', 'cancelled']
-  const currentBookings = bookings[activeTab]
+  const tabs = [
+    { id: 'all', label: 'All', icon: Calendar, color: theme.colors.primary[500] },
+    { id: 'upcoming', label: 'Upcoming', icon: Clock, color: '#2563eb' },
+    { id: 'past', label: 'Past', icon: Calendar, color: '#6b7280' },
+    { id: 'pending', label: 'Pending', icon: AlertCircle, color: '#d97706' },
+    { id: 'confirmed', label: 'Confirmed', icon: Check, color: '#16a34a' },
+    { id: 'cancelled', label: 'Cancelled', icon: X, color: '#dc2626' }
+  ]
+
+  const getFilteredBookings = () => {
+    const allBookings = [...bookings.pending, ...bookings.confirmed, ...bookings.completed, ...bookings.cancelled]
+    const now = new Date()
+    
+    let filtered = []
+    
+    if (activeTab === 'all') {
+      filtered = allBookings
+    } else if (activeTab === 'upcoming') {
+      filtered = allBookings.filter(b => new Date(b.startDateTime) >= now)
+    } else if (activeTab === 'past') {
+      filtered = allBookings.filter(b => new Date(b.startDateTime) < now)
+    } else {
+      filtered = bookings[activeTab]
+    }
+    
+    return filtered.filter(booking => 
+      booking.user?.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.user?.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.serviceType?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }
+
+  const filteredBookings = getFilteredBookings()
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        staggerChildren: 0.05 
+      }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0 }
+  }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <div 
+          className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: theme.colors.accent[500], borderTopColor: 'transparent' }}
+        />
+        <p className="text-gray-500 font-medium animate-pulse">Loading bookings...</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold" style={{color: '#111827'}}>Bookings</h1>
-        <p className="mt-1" style={{color: '#6B7280'}}>Manage your enquiries and confirmed bookings</p>
+    <>
+      <Notification notifications={notifications} onClose={removeNotification} />
+      <div className="space-y-8 pb-10">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 
+            className="text-3xl font-bold text-gray-900 mb-2"
+            style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
+          >
+            Bookings
+          </h1>
+          <p className="text-gray-600">Manage your enquiries and schedule</p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search bookings..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 rounded-xl border-gray-200 bg-white focus:ring-2 focus:ring-opacity-20 transition-all outline-none"
+            style={{ 
+              borderColor: 'transparent',
+              boxShadow: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
+              ['--tw-ring-color']: theme.colors.accent[500]
+            }}
+          />
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-1 p-1 rounded-xl" style={{backgroundColor: '#F3F4F6'}}>
+      <div className="flex overflow-x-auto pb-2 scrollbar-hide gap-2">
         {tabs.map(tab => {
-          const count = bookings[tab].length
+          const allBookings = [...bookings.pending, ...bookings.confirmed, ...bookings.completed, ...bookings.cancelled]
+          const now = new Date()
+          
+          let count = 0
+          if (tab.id === 'all') {
+            count = allBookings.length
+          } else if (tab.id === 'upcoming') {
+            count = allBookings.filter(b => new Date(b.startDateTime) >= now).length
+          } else if (tab.id === 'past') {
+            count = allBookings.filter(b => new Date(b.startDateTime) < now).length
+          } else {
+            count = bookings[tab.id]?.length || 0
+          }
+          
+          const isActive = activeTab === tab.id
+          const Icon = tab.icon
+          
           return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className="flex-1 px-4 py-2.5 font-medium text-sm transition-all rounded-lg"
+            <motion.button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`
+                flex items-center gap-2 px-6 py-3 rounded-xl font-semibold whitespace-nowrap transition-all duration-300
+                ${isActive ? 'shadow-md transform scale-105' : 'hover:bg-white hover:shadow-sm'}
+              `}
               style={{
-                backgroundColor: activeTab === tab ? '#FFFFFF' : 'transparent',
-                color: activeTab === tab ? '#1E3A8A' : '#6B7280',
-                boxShadow: activeTab === tab ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                backgroundColor: isActive ? 'white' : 'transparent',
+                color: isActive ? tab.color : '#6B7280'
               }}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <Icon className="w-5 h-5" />
+              {tab.label}
               {count > 0 && (
-                <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold" style={{
-                  backgroundColor: activeTab === tab ? '#DBEAFE' : '#E5E7EB',
-                  color: activeTab === tab ? '#1E3A8A' : '#6B7280'
-                }}>
+                <span 
+                  className="ml-1 px-2 py-0.5 rounded-full text-xs font-bold"
+                  style={{
+                    backgroundColor: isActive ? `${tab.color}15` : '#E5E7EB',
+                    color: isActive ? tab.color : '#6B7280'
+                  }}
+                >
                   {count}
                 </span>
               )}
-            </button>
+            </motion.button>
           )
         })}
       </div>
 
-      {/* Bookings List */}
-      {currentBookings.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed" style={{backgroundColor: '#F9FAFB', borderColor: '#E5E7EB'}}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{backgroundColor: '#DBEAFE'}}>
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#1E3A8A'}}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v16a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-semibold mb-2" style={{color: '#111827'}}>No {activeTab} bookings</h3>
-          <p style={{color: '#6B7280'}}>You don't have any {activeTab} bookings yet</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {currentBookings.map(booking => (
-            <div key={booking.id} className="p-6 rounded-2xl border cursor-pointer hover:shadow-lg transition-all" style={{backgroundColor: '#FFFFFF', borderColor: '#E5E7EB'}} onClick={() => setSelectedBooking(booking)}>
-              <div className="flex items-start justify-between gap-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{backgroundColor: '#DBEAFE'}}>
-                      <span className="text-lg font-bold" style={{color: '#1E3A8A'}}>{booking.user?.firstName?.[0] || 'U'}{booking.user?.lastName?.[0] || ''}</span>
+      {/* Bookings Grid */}
+      <AnimatePresence mode='wait'>
+        <motion.div
+          key={activeTab}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6"
+        >
+          {filteredBookings.length === 0 ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="col-span-full flex flex-col items-center justify-center py-20 rounded-3xl border-2 border-dashed border-gray-200 bg-gray-50/50"
+            >
+              <div 
+                className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
+                style={{ backgroundColor: theme.colors.accent[50] }}
+              >
+                <Calendar className="w-10 h-10" style={{ color: theme.colors.accent[500] }} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">No {activeTab} bookings</h3>
+              <p className="text-gray-500">You don't have any {activeTab} bookings matching your search.</p>
+            </motion.div>
+          ) : (
+            filteredBookings.map(booking => {
+              console.log('💳 Card booking:', booking.id, 'price:', booking.price, 'totalPrice:', booking.totalPrice)
+              return (
+              <motion.div
+                key={booking.id}
+                variants={itemVariants}
+                onClick={() => setSelectedBooking(booking)}
+                whileHover={{ scale: 1.02, y: -4 }}
+                whileTap={{ scale: 0.98 }}
+                className="group bg-white rounded-2xl p-6 shadow-sm border border-gray-100 cursor-pointer hover:shadow-xl transition-all duration-300 relative overflow-hidden"
+              >
+                {/* Visual Status Indicator */}
+                <div 
+                  className="absolute top-0 right-0 w-24 h-24 -mr-10 -mt-10 rounded-full opacity-10 transition-transform group-hover:scale-150"
+                  style={{ backgroundColor: tabs.find(t => t.id === activeTab).color }}
+                />
+
+                <div className="relative z-10">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                      <div 
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-bold text-white shadow-lg"
+                        style={{ 
+                          background: `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})`
+                        }}
+                      >
+                        {booking.user?.firstName?.[0] || '?'}{booking.user?.lastName?.[0] || ''}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 leading-tight mb-1">
+                          {booking.user?.firstName || 'Unknown'} {booking.user?.lastName || 'User'}
+                        </h3>
+                        <span 
+                          className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600"
+                        >
+                          {booking.serviceType}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold" style={{color: '#111827'}}>{booking.user?.firstName} {booking.user?.lastName}</h3>
-                      <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{backgroundColor: '#DBEAFE', color: '#1E3A8A'}}>
-                        {booking.serviceType}
+                  </div>
+
+                  {/* Details */}
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <div className="p-2 rounded-lg bg-gray-50 text-gray-500">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <span className="font-medium">{new Date(booking.startDateTime).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <div className="p-2 rounded-lg bg-gray-50 text-gray-500">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <span className="font-medium">
+                        {new Date(booking.startDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#6B7280'}}>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v16a2 2 0 002 2z" />
-                      </svg>
-                      <span className="text-sm" style={{color: '#6B7280'}}>{new Date(booking.startDateTime).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#6B7280'}}>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-sm" style={{color: '#6B7280'}}>{new Date(booking.startDateTime).toLocaleTimeString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#6B7280'}}>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <span className="text-sm" style={{color: '#6B7280'}}>{booking.location}</span>
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <div className="p-2 rounded-lg bg-gray-50 text-gray-500">
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <span className="font-medium truncate">{booking.location}</span>
                     </div>
                   </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold mb-3" style={{color: '#1E3A8A'}}>${booking.price}</p>
-                  <button className="px-5 py-2 rounded-xl text-sm font-medium hover:shadow-md transition-all" style={{backgroundColor: '#1E3A8A', color: '#FFFFFF'}}>
-                    View Details
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
-      {/* Details Modal */}
-      {selectedBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{backgroundColor: 'rgba(0, 0, 0, 0.6)'}}>
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold" style={{color: '#111827'}}>Booking Details</h2>
-              <button onClick={() => setSelectedBooking(null)} className="hover:opacity-70 transition-opacity" style={{color: '#9CA3AF'}}>
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Client Info */}
-              <div className="p-4 rounded-xl" style={{backgroundColor: '#F9FAFB'}}>
-                <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{color: '#6B7280'}}>Client Information</h3>
-                <div className="space-y-2.5 text-sm">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#6B7280'}}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    <span style={{color: '#111827'}}>{selectedBooking.user?.firstName} {selectedBooking.user?.lastName}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#6B7280'}}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    <span style={{color: '#111827'}}>{selectedBooking.user?.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#6B7280'}}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                    <span style={{color: '#111827'}}>{selectedBooking.user?.phone}</span>
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <div className="flex items-baseline gap-1">
+                       <span className="text-lg font-bold" style={{ color: theme.colors.accent[600] }}>₦</span>
+                       <span className="text-2xl font-bold" style={{ color: theme.colors.accent[600] }}>{(booking.price || booking.totalPrice || 0).toLocaleString()}</span>
+                    </div>
+                    <span className="flex items-center gap-1 text-sm font-semibold text-gray-400 group-hover:text-gray-900 transition-colors">
+                      View Details
+                      <ChevronRight className="w-4 h-4" />
+                    </span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
+            )})
+          )}
+        </motion.div>
+      </AnimatePresence>
 
-              {/* Event Info */}
-              <div className="p-4 rounded-xl" style={{backgroundColor: '#F9FAFB'}}>
-                <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{color: '#6B7280'}}>Event Information</h3>
-                <div className="space-y-2.5 text-sm">
-                  <p><span className="font-semibold" style={{color: '#374151'}}>Type:</span> <span style={{color: '#111827'}}>{selectedBooking.serviceType}</span></p>
-                  <p><span className="font-semibold" style={{color: '#374151'}}>Date:</span> <span style={{color: '#111827'}}>{new Date(selectedBooking.startDateTime).toLocaleDateString()}</span></p>
-                  <p><span className="font-semibold" style={{color: '#374151'}}>Time:</span> <span style={{color: '#111827'}}>{new Date(selectedBooking.startDateTime).toLocaleTimeString()} - {new Date(selectedBooking.endDateTime).toLocaleTimeString()}</span></p>
-                  <p><span className="font-semibold" style={{color: '#374151'}}>Location:</span> <span style={{color: '#111827'}}>{selectedBooking.location}</span></p>
-                </div>
-              </div>
-
-              {/* Payment Status */}
-              <div className="p-4 rounded-xl" style={{backgroundColor: '#D1FAE5'}}>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold" style={{color: '#047857'}}>Total Amount</span>
-                  <span className="text-2xl font-bold" style={{color: '#10B981'}}>${selectedBooking.price}</span>
-                </div>
-              </div>
-
-              {/* Booking Status */}
-              <div className="p-4 rounded-xl" style={{backgroundColor: selectedBooking.status === 'accepted' ? '#D1FAE5' : selectedBooking.status === 'pending' ? '#FEF3C7' : '#FEE2E2'}}>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold" style={{color: selectedBooking.status === 'accepted' ? '#047857' : selectedBooking.status === 'pending' ? '#92400E' : '#DC2626'}}>Booking Status</span>
-                  <span className="text-lg font-bold capitalize" style={{color: selectedBooking.status === 'accepted' ? '#10B981' : selectedBooking.status === 'pending' ? '#F59E0B' : '#EF4444'}}>{selectedBooking.status}</span>
-                </div>
-              </div>
-
-              {/* Actions - Only show for pending bookings */}
-              {selectedBooking.status === 'pending' && (
-                <div className="flex space-x-3 pt-2">
-                  <button 
-                    onClick={() => handleRejectBooking(selectedBooking.id)}
-                    className="flex-1 px-4 py-3 rounded-xl border font-medium hover:bg-gray-50 transition-colors" 
-                    style={{borderColor: '#E5E7EB', color: '#374151'}}
+      {/* Booking Details Modal */}
+      <AnimatePresence>
+        {selectedBooking && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setSelectedBooking(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="p-8 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                <div>
+                  <h2 
+                    className="text-2xl font-bold text-gray-900"
+                    style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
                   >
-                    Decline
-                  </button>
-                  <button 
-                    onClick={() => handleAcceptBooking(selectedBooking.id)}
-                    className="flex-1 px-4 py-3 rounded-xl text-white font-medium shadow-sm hover:shadow-md transition-all" 
-                    style={{backgroundColor: '#1E3A8A'}}
-                  >
-                    Accept
-                  </button>
+                    Booking Details
+                  </h2>
+                  <p className="text-gray-500 text-sm mt-1">ID: #{selectedBooking.id}</p>
                 </div>
-              )}
-
-              {selectedBooking.status === 'accepted' && (
-                <button className="w-full px-4 py-3 rounded-xl border font-medium hover:bg-gray-50 transition-colors" style={{borderColor: '#E5E7EB', color: '#1E3A8A'}}>
-                  💬 Contact Client
+                <button 
+                  onClick={() => setSelectedBooking(null)}
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
                 </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-8 overflow-y-auto custom-scrollbar space-y-8">
+                {/* Client Section */}
+                <section>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
+                    <User className="w-4 h-4" /> Client Information
+                  </h3>
+                  <div className="bg-gray-50 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex items-center gap-4">
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-md"
+                        style={{ background: `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})` }}
+                      >
+                        {selectedBooking.user?.firstName?.[0]}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900 text-lg">
+                          {selectedBooking.user?.firstName} {selectedBooking.user?.lastName}
+                        </p>
+                        <p className="text-gray-500 text-sm">Client</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 text-gray-600">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium">{selectedBooking.user?.email}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-gray-600">
+                        <Phone className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium">{selectedBooking.user?.phone || 'No phone provided'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Event Details */}
+                <section>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" /> Event Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl border border-gray-100 hover:border-gray-200 transition-colors">
+                      <p className="text-sm text-gray-500 mb-1">Service Type</p>
+                      <p className="font-bold text-gray-900">{selectedBooking.serviceType}</p>
+                    </div>
+                    <div className="p-4 rounded-2xl border border-gray-100 hover:border-gray-200 transition-colors">
+                      <p className="text-sm text-gray-500 mb-1">Date & Time</p>
+                      <p className="font-bold text-gray-900">
+                        {new Date(selectedBooking.startDateTime).toLocaleDateString()}
+                        <span className="text-gray-400 mx-2">|</span>
+                        {new Date(selectedBooking.startDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-2xl border border-gray-100 hover:border-gray-200 transition-colors col-span-full">
+                      <p className="text-sm text-gray-500 mb-1">Location</p>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-gray-400" />
+                        <p className="font-bold text-gray-900">{selectedBooking.location}</p>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Status & Price */}
+                <section>
+                   <div className="flex items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-gray-50 to-white border border-gray-100">
+                     <div>
+                       <p className="text-sm text-gray-500 mb-2">Total Amount</p>
+                       <div className="flex items-baseline gap-1">
+                         <span className="text-2xl font-bold" style={{ color: theme.colors.accent[600] }}>₦</span>
+                         <p className="text-4xl font-bold" style={{ color: theme.colors.accent[600], fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+                           {(selectedBooking.price || selectedBooking.totalPrice || 0).toLocaleString()}
+                         </p>
+                       </div>
+                     </div>
+                     <span 
+                       className="px-4 py-2 rounded-xl text-sm font-bold capitalize shadow-sm"
+                       style={{ 
+                         backgroundColor: `${tabs.find(t => t.id === selectedBooking.status)?.color || theme.colors.gray[500]}20`,
+                         color: tabs.find(t => t.id === selectedBooking.status)?.color || theme.colors.gray[600]
+                       }}
+                     >
+                       {selectedBooking.status}
+                     </span>
+                   </div>
+                </section>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 sticky bottom-0">
+                {selectedBooking.status === 'pending' ? (
+                  <>
+                    <button
+                      onClick={() => handleRejectBooking(selectedBooking.id)}
+                      disabled={actionLoading}
+                      className="px-6 py-3 rounded-xl font-bold bg-white text-red-500 border border-red-100 hover:bg-red-50 hover:border-red-200 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Decline Booking
+                    </button>
+                    <button
+                      onClick={() => handleAcceptBooking(selectedBooking.id)}
+                      disabled={actionLoading}
+                      className="px-8 py-3 rounded-xl font-bold text-white shadow-lg shadow-green-200 hover:shadow-xl hover:translate-y-[-2px] transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                      style={{ background: '#16a34a' }}
+                    >
+                      {actionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                      {actionLoading ? 'Processing...' : 'Accept Booking'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-white shadow-lg transition-all hover:shadow-xl flex items-center justify-center gap-2 hover:translate-y-[-2px]"
+                    style={{ background: theme.colors.accent[500] }}
+                  >
+                    <MessageSquare className="w-5 h-5" />
+                    Message Client
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
+    </>
   )
 }

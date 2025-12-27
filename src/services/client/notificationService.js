@@ -14,6 +14,16 @@ class ClientNotificationService extends BaseApiService {
     }
   }
 
+  async getNotificationDetail(notificationId) {
+    try {
+      const data = await this.get(`/notifications/users/${notificationId}`)
+      return this.handleResponse(data, 'Failed to fetch notification details')
+    } catch (error) {
+      console.error('Failed to fetch notification detail:', error)
+      throw error
+    }
+  }
+
   async markAsRead(notificationId) {
     try {
       const data = await this.patch(`/notifications/users/${notificationId}/read`)

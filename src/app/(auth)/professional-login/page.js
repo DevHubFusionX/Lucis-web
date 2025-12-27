@@ -3,7 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { theme } from '../../../lib/theme'
-import { ArrowRight, Mail, Lock, Eye, EyeOff, Camera } from 'lucide-react'
+import { ArrowRight, Mail, Lock, Eye, EyeOff, Camera, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
 
 export default function ProfessionalLoginPage () {
@@ -14,14 +14,25 @@ export default function ProfessionalLoginPage () {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [notification, setNotification] = useState(null)
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message })
+    setTimeout(() => setNotification(null), 5000)
+  }
 
   const handleSubmit = async e => {
     e.preventDefault()
     setIsLoading(true)
     try {
-      await login(formData, 'professional')
+      const result = await login(formData, 'professional')
+      if (result && !result.success) {
+        showNotification('error', result.error || 'Login failed. Please try again.')
+      } else {
+        showNotification('success', 'Login successful! Redirecting...')
+      }
     } catch (error) {
-      console.error('Login error:', error)
+      showNotification('error', error.message || 'An error occurred during login.')
     } finally {
       setIsLoading(false)
     }
@@ -33,6 +44,25 @@ export default function ProfessionalLoginPage () {
 
   return (
     <div className='min-h-screen flex'>
+      
+      {/* Notification Toast */}
+      {notification && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-lg ${
+            notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+          } text-white`}
+        >
+          {notification.type === 'success' ? (
+            <CheckCircle2 className='w-5 h-5' />
+          ) : (
+            <XCircle className='w-5 h-5' />
+          )}
+          <span className='font-medium'>{notification.message}</span>
+        </motion.div>
+      )}
       {/* Left Side - Form */}
       <div className='w-full lg:w-1/2 flex items-center justify-center bg-white p-8'>
         <div className='w-full max-w-md'>
@@ -149,9 +179,16 @@ export default function ProfessionalLoginPage () {
             >
               <div className='absolute inset-0 bg-accent-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300' />
               <span className='relative flex items-center justify-center gap-3'>
-                {isLoading ? 'Signing in...' : 'Sign In'}
-                {!isLoading && (
-                  <ArrowRight className='w-5 h-5 group-hover:translate-x-1 transition-transform' />
+                {isLoading ? (
+                  <>
+                    <Loader2 className='w-5 h-5 animate-spin' />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className='w-5 h-5 group-hover:translate-x-1 transition-transform' />
+                  </>
                 )}
               </span>
             </button>

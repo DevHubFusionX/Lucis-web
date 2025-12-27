@@ -1,19 +1,37 @@
 'use client'
 import { useState, useEffect } from 'react'
-import professionalService from '../../../../services/professionalService'
+import { motion, AnimatePresence } from 'framer-motion'
+import { theme } from '../../../../lib/theme'
+import notificationService from '../../../../services/professional/notificationService'
+import Notification from '../../../../components/ui/Notification'
+import { Bell, Calendar, MessageSquare, Star, DollarSign, Info, Loader2, CheckCircle, X, MapPin, Clock } from 'lucide-react'
 
 export default function NotificationsPage() {
   const [filter, setFilter] = useState('all')
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
+  const [toastNotifications, setToastNotifications] = useState([])
+  const [selectedNotification, setSelectedNotification] = useState(null)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+
+  const addToastNotification = (type, title, message) => {
+    const id = Date.now()
+    setToastNotifications(prev => [...prev, { id, type, title, message }])
+    setTimeout(() => removeToastNotification(id), 5000)
+  }
+
+  const removeToastNotification = (id) => {
+    setToastNotifications(prev => prev.filter(n => n.id !== id))
+  }
 
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const data = await professionalService.getNotifications()
+        const data = await notificationService.getNotifications()
         setNotifications(data)
       } catch (error) {
         console.error('Failed to fetch notifications:', error)
+        addToastNotification('error', 'Error', 'Failed to load notifications. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -27,22 +45,17 @@ export default function NotificationsPage() {
 
   const getIcon = (type) => {
     switch(type) {
-      case 'booking':
-        return 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v16a2 2 0 002 2z'
-      case 'message':
-        return 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z'
-      case 'review':
-        return 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.837-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z'
-      case 'payment':
-        return 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z'
-      default:
-        return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+      case 'booking': return Calendar
+      case 'message': return MessageSquare
+      case 'review': return Star
+      case 'payment': return DollarSign
+      default: return Info
     }
   }
 
   const getIconColor = (type) => {
     switch(type) {
-      case 'booking': return '#1E3A8A'
+      case 'booking': return theme.colors.accent[600]
       case 'message': return '#0EA5E9'
       case 'review': return '#F59E0B'
       case 'payment': return '#10B981'
@@ -50,8 +63,22 @@ export default function NotificationsPage() {
     }
   }
 
-  const markAsRead = (id) => {
-    setNotifications(notifications.map(n => n.id === id ? {...n, isRead: true} : n))
+  const handleNotificationClick = async (id) => {
+    setLoadingDetail(true)
+    try {
+      const detail = await notificationService.getNotification(id)
+      setSelectedNotification(detail)
+      
+      if (!detail.isRead) {
+        await notificationService.markAsRead(id)
+        setNotifications(notifications.map(n => n.id === id ? {...n, isRead: true, readAt: new Date().toISOString()} : n))
+      }
+    } catch (error) {
+      console.error('Failed to fetch notification:', error)
+      addToastNotification('error', 'Error', 'Failed to load notification details.')
+    } finally {
+      setLoadingDetail(false)
+    }
   }
 
   const formatTimestamp = (dateString) => {
@@ -81,15 +108,15 @@ export default function NotificationsPage() {
     const data = notification.data
     switch(notification.type) {
       case 'booking_request':
-        return `${data.user?.firstName} ${data.user?.lastName} requested a ${data.serviceType} session`
+        return `${data?.user?.firstName} ${data?.user?.lastName} requested a ${data?.serviceType} session`
       case 'booking_accepted':
-        return `Your booking for ${data.serviceType} has been accepted`
+        return `Your booking for ${data?.serviceType} has been accepted`
       case 'booking_cancelled':
-        return `Booking for ${data.serviceType} has been cancelled`
+        return `Booking for ${data?.serviceType} has been cancelled`
       case 'payment_received':
-        return `Payment received for ${data.serviceType} session`
+        return `Payment received for ${data?.serviceType} session`
       case 'review_received':
-        return `${data.user?.firstName} ${data.user?.lastName} left a review`
+        return `${data?.user?.firstName} ${data?.user?.lastName} left a review`
       default:
         return 'You have a new notification'
     }
@@ -112,102 +139,306 @@ export default function NotificationsPage() {
     }
   }
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <div 
+          className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: theme.colors.accent[500], borderTopColor: 'transparent' }}
+        />
+        <p className="text-gray-500 font-medium animate-pulse">Loading notifications...</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" style={{color: '#111827'}}>Notifications</h1>
-          <p className="mt-1" style={{color: '#6B7280'}}>Stay updated with your bookings and messages</p>
-        </div>
-        {unreadCount > 0 && (
-          <div className="px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-sm" style={{backgroundColor: '#DC2626'}}>
-            {unreadCount} unread
+    <>
+      <Notification notifications={toastNotifications} onClose={removeToastNotification} />
+      <div className="space-y-8 pb-10">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between"
+        >
+          <div>
+            <h1 
+              className="text-4xl font-bold text-gray-900 mb-2"
+              style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
+            >
+              Notifications
+            </h1>
+            <p className="text-gray-600 text-lg">Stay updated with your bookings and messages</p>
+          </div>
+          {unreadCount > 0 && (
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg"
+              style={{ backgroundColor: '#DC2626' }}
+            >
+              {unreadCount} unread
+            </motion.div>
+          )}
+        </motion.div>
+
+        {/* Filters */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="flex gap-2 p-1 rounded-xl bg-gray-100"
+        >
+          <motion.button
+            onClick={() => setFilter('all')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="px-6 py-3 rounded-lg font-semibold transition-all"
+            style={{
+              backgroundColor: filter === 'all' ? 'white' : 'transparent',
+              color: filter === 'all' ? theme.colors.accent[600] : '#6B7280',
+              boxShadow: filter === 'all' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+            }}
+          >
+            All
+          </motion.button>
+          <motion.button
+            onClick={() => setFilter('unread')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="px-6 py-3 rounded-lg font-semibold transition-all"
+            style={{
+              backgroundColor: filter === 'unread' ? 'white' : 'transparent',
+              color: filter === 'unread' ? theme.colors.accent[600] : '#6B7280',
+              boxShadow: filter === 'unread' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+            }}
+          >
+            Unread ({unreadCount})
+          </motion.button>
+        </motion.div>
+
+        {/* Notifications List */}
+        {filteredNotifications.length === 0 ? (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50"
+          >
+            <div 
+              className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
+              style={{ backgroundColor: theme.colors.accent[50] }}
+            >
+              <Bell className="w-10 h-10" style={{ color: theme.colors.accent[500] }} />
+            </div>
+            <h3 
+              className="text-2xl font-bold text-gray-900 mb-2"
+              style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
+            >
+              No notifications
+            </h3>
+            <p className="text-gray-600">You're all caught up!</p>
+          </motion.div>
+        ) : (
+          <div className="space-y-3">
+            {filteredNotifications.map((notification, index) => {
+              const IconComponent = getIcon(getNotificationType(notification.type))
+              return (
+              <motion.div 
+                key={notification.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + index * 0.05 }}
+                whileHover={{ scale: 1.01, y: -2 }}
+                onClick={() => handleNotificationClick(notification.id)}
+                className="p-6 rounded-2xl cursor-pointer transition-all bg-white border-2 shadow-sm hover:shadow-lg"
+                style={{
+                  borderColor: notification.isRead ? '#E5E7EB' : theme.colors.accent[500]
+                }}
+              >
+                <div className="flex items-start gap-4">
+                  <div 
+                    className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-sm"
+                    style={{ backgroundColor: notification.isRead ? '#F3F4F6' : `${getIconColor(getNotificationType(notification.type))}15` }}
+                  >
+                    <IconComponent className="w-6 h-6" style={{ color: getIconColor(getNotificationType(notification.type)) }} />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-bold text-gray-900">{getNotificationTitle(notification)}</h3>
+                      {!notification.isRead && (
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: theme.colors.accent[500] }}></div>
+                      )}
+                    </div>
+                    <p className="text-sm leading-relaxed text-gray-700">
+                      {getNotificationMessage(notification)}
+                    </p>
+                    <div className="flex items-center gap-2 mt-3">
+                      <p className="text-xs font-medium text-gray-400">
+                        {formatTimestamp(notification.createdAt)}
+                      </p>
+                      {notification.isRead && notification.readAt && (
+                        <>
+                          <span className="text-gray-300">•</span>
+                          <div className="flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3 text-green-500" />
+                            <span className="text-xs text-green-600 font-medium">Read</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )})}
           </div>
         )}
-      </div>
 
-      {/* Filters */}
-      <div className="flex gap-2 p-1 rounded-xl" style={{backgroundColor: '#F3F4F6'}}>
-        <button
-          onClick={() => setFilter('all')}
-          className="px-5 py-2.5 rounded-lg font-medium transition-all"
-          style={{
-            backgroundColor: filter === 'all' ? '#FFFFFF' : 'transparent',
-            color: filter === 'all' ? '#1E3A8A' : '#6B7280',
-            boxShadow: filter === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-          }}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setFilter('unread')}
-          className="px-5 py-2.5 rounded-lg font-medium transition-all"
-          style={{
-            backgroundColor: filter === 'unread' ? '#FFFFFF' : 'transparent',
-            color: filter === 'unread' ? '#1E3A8A' : '#6B7280',
-            boxShadow: filter === 'unread' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-          }}
-        >
-          Unread ({unreadCount})
-        </button>
-      </div>
-
-      {/* Notifications List */}
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      ) : filteredNotifications.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed" style={{backgroundColor: '#F9FAFB', borderColor: '#E5E7EB'}}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{backgroundColor: '#DBEAFE'}}>
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#1E3A8A'}}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-semibold mb-2" style={{color: '#111827'}}>No notifications</h3>
-          <p style={{color: '#6B7280'}}>You're all caught up!</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredNotifications.map(notification => (
-            <div 
-              key={notification.id}
-              onClick={() => markAsRead(notification.id)}
-              className="p-5 rounded-2xl cursor-pointer transition-all hover:shadow-lg"
-              style={{
-                backgroundColor: notification.isRead ? '#FFFFFF' : '#F9FAFB',
-                border: `2px solid ${notification.isRead ? '#E5E7EB' : '#1E3A8A'}`
-              }}
+        {/* Notification Detail Modal */}
+        <AnimatePresence>
+          {selectedNotification && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              onClick={() => setSelectedNotification(null)}
             >
-              <div className="flex items-start gap-4">
-                {/* Icon */}
-                <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center" style={{backgroundColor: notification.isRead ? '#F3F4F6' : '#DBEAFE'}}>
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: getIconColor(getNotificationType(notification.type))}}>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={getIcon(getNotificationType(notification.type))} />
-                  </svg>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-bold" style={{color: '#111827'}}>{getNotificationTitle(notification)}</h3>
-                    {!notification.isRead && (
-                      <div className="w-2 h-2 rounded-full" style={{backgroundColor: '#1E3A8A'}}></div>
-                    )}
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+              >
+                {loadingDetail ? (
+                  <div className="flex items-center justify-center h-96">
+                    <Loader2 className="w-12 h-12 animate-spin" style={{ color: theme.colors.accent[500] }} />
                   </div>
-                  <p className="text-sm leading-relaxed" style={{color: '#374151'}}>
-                    {getNotificationMessage(notification)}
-                  </p>
-                  <p className="text-xs mt-2 font-medium" style={{color: '#9CA3AF'}}>
-                    {formatTimestamp(notification.createdAt)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+                ) : (
+                  <>
+                    <div className="p-8 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                      <div>
+                        <h2 
+                          className="text-2xl font-bold text-gray-900"
+                          style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
+                        >
+                          {getNotificationTitle(selectedNotification)}
+                        </h2>
+                        <p className="text-gray-500 text-sm mt-1">{formatTimestamp(selectedNotification.createdAt)}</p>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedNotification(null)}
+                        className="p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+                    </div>
+
+                    <div className="p-8 overflow-y-auto space-y-6">
+                      <div className="p-6 rounded-2xl" style={{ backgroundColor: theme.colors.accent[50] }}>
+                        <p className="text-gray-800 leading-relaxed">
+                          {getNotificationMessage(selectedNotification)}
+                        </p>
+                      </div>
+
+                      {selectedNotification.data && (
+                        <div className="space-y-4">
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                            <Info className="w-4 h-4" /> Details
+                          </h3>
+                          
+                          {selectedNotification.data.user && (
+                            <div className="bg-gray-50 rounded-2xl p-6">
+                              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-4">Client Information</p>
+                              <div className="flex items-center gap-4">
+                                <div 
+                                  className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white shadow-md"
+                                  style={{ background: `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})` }}
+                                >
+                                  {selectedNotification.data.user.firstName?.[0]}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-gray-900">
+                                    {selectedNotification.data.user.firstName} {selectedNotification.data.user.lastName}
+                                  </p>
+                                  <p className="text-sm text-gray-600">{selectedNotification.data.user.email}</p>
+                                  {selectedNotification.data.user.phone && (
+                                    <p className="text-sm text-gray-600">{selectedNotification.data.user.phone}</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedNotification.data.serviceType && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="p-4 rounded-2xl border border-gray-100">
+                                <p className="text-sm text-gray-500 mb-1">Service Type</p>
+                                <p className="font-bold text-gray-900">{selectedNotification.data.serviceType}</p>
+                              </div>
+                              {selectedNotification.data.status && (
+                                <div className="p-4 rounded-2xl border border-gray-100">
+                                  <p className="text-sm text-gray-500 mb-1">Status</p>
+                                  <p className="font-bold text-gray-900 capitalize">{selectedNotification.data.status}</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {selectedNotification.data.startDateTime && (
+                            <div className="p-4 rounded-2xl border border-gray-100">
+                              <p className="text-sm text-gray-500 mb-2">Date & Time</p>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-gray-400" />
+                                <p className="font-bold text-gray-900">
+                                  {new Date(selectedNotification.data.startDateTime).toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                  })}
+                                </p>
+                                <span className="text-gray-400 mx-2">|</span>
+                                <Clock className="w-4 h-4 text-gray-400" />
+                                <p className="font-bold text-gray-900">
+                                  {new Date(selectedNotification.data.startDateTime).toLocaleTimeString([], { 
+                                    hour: '2-digit', 
+                                    minute: '2-digit' 
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {selectedNotification.data.location && (
+                            <div className="p-4 rounded-2xl border border-gray-100">
+                              <p className="text-sm text-gray-500 mb-2">Location</p>
+                              <div className="flex items-center gap-2">
+                                <MapPin className="w-4 h-4 text-gray-400" />
+                                <p className="font-bold text-gray-900">{selectedNotification.data.location}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end">
+                      <button
+                        onClick={() => setSelectedNotification(null)}
+                        className="px-6 py-3 rounded-xl font-bold text-white shadow-lg transition-all hover:shadow-xl"
+                        style={{ background: theme.colors.accent[500] }}
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
   )
 }

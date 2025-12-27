@@ -1,35 +1,34 @@
 import BaseApiService from '../api/baseApi'
-import { storage } from '../../utils/storage'
 
 class NotificationService extends BaseApiService {
   async getNotifications() {
-    const user = storage.get('user')
-    
-    if (!user?.id) {
-      throw new Error('User not authenticated')
-    }
-    
     try {
-      const data = await this.get(`/notifications/professionals/${user.id}`)
+      const data = await this.get('/notifications/professionals', true)
       return Array.isArray(data.data) ? data.data : []
     } catch (error) {
+      console.error('Failed to fetch notifications:', error)
       return []
     }
   }
 
   async getNotification(notificationId) {
-    const user = storage.get('user')
-    
-    if (!user?.id) {
-      throw new Error('User not authenticated')
+    try {
+      const data = await this.get(`/notifications/professionals/${notificationId}`, true)
+      return data.data
+    } catch (error) {
+      console.error('Failed to fetch notification:', error)
+      throw error
     }
-    
-    if (!notificationId) {
-      throw new Error('Notification ID is required')
+  }
+
+  async markAsRead(notificationId) {
+    try {
+      const data = await this.patch(`/notifications/${notificationId}/read`, {})
+      return this.handleResponse(data, 'Failed to mark notification as read')
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error)
+      throw error
     }
-    
-    const data = await this.get(`/notifications/professionals/${user.id}/${notificationId}`)
-    return this.handleResponse(data, 'Failed to fetch notification')
   }
 }
 

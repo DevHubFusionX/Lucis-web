@@ -1,25 +1,28 @@
+import httpClient from './api/httpClient'
 import { storage } from '../utils/storage'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL 
-
+/**
+ * Authentication and user management service
+ */
 class AuthService {
+  /**
+   * Login for clients or professionals
+   */
   async login(credentials, userType = 'client') {
-    const endpoint = userType === 'professional' ? '/auth/professionals/login' : '/auth/users/login'
+    const endpoint = userType === 'professional' 
+      ? '/auth/professionals/login' 
+      : '/auth/users/login'
     
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
+    const data = await httpClient.post(endpoint, credentials, {
+      requestId: 'login',
+      retryAttempts: 1 // Don't retry auth failures
     })
 
-    const data = await response.json()
-    
-    if (!response.ok || data.error) {
+    if (data.error) {
       throw new Error(data.message || 'Login failed')
     }
 
+    // Store auth data
     if (data.data?.token) {
       storage.set('token', data.data.token)
       storage.set('user', data.data.user)
@@ -29,79 +32,78 @@ class AuthService {
     return data.data
   }
 
+  /**
+   * Signup for clients or professionals
+   */
   async signup(userData, userType = 'client') {
-    const endpoint = userType === 'professional' ? '/auth/professionals/sign-up' : '/auth/users/sign-up'
+    const endpoint = userType === 'professional' 
+      ? '/auth/professionals/sign-up' 
+      : '/auth/users/sign-up'
     
     // Create FormData for multipart/form-data
     const formData = new FormData()
     formData.append('email', userData.email)
-    // Password should be sent via JSON body, not FormData
-    const { password, ...safeData } = userData
     
     // Handle firstName and lastName properly
-    if (safeData.firstName && safeData.lastName) {
-      formData.append('firstName', safeData.firstName)
-      formData.append('lastName', safeData.lastName)
-    } else if (safeData.fullName) {
-      const nameParts = safeData.fullName.split(' ')
+    if (userData.firstName && userData.lastName) {
+      formData.append('firstName', userData.firstName)
+      formData.append('lastName', userData.lastName)
+    } else if (userData.fullName) {
+      const nameParts = userData.fullName.split(' ')
       formData.append('firstName', nameParts[0] || '')
       formData.append('lastName', nameParts.slice(1).join(' ') || '')
-    } else {
-      formData.append('firstName', safeData.firstName || '')
-      formData.append('lastName', safeData.lastName || '')
     }
     
     if (userType === 'professional') {
       // Professional required fields
-      formData.append('phone', safeData.phone || '')
-      formData.append('baseCity', safeData.baseCity || '')
-      formData.append('longitude', safeData.longitude || '0')
-      formData.append('latitude', safeData.latitude || '0')
+      formData.append('phone', String(userData.phone || ''))
+      formData.append('baseCity', userData.baseCity || '')
+      formData.append('longitude', String(userData.longitude || '0'))
+      formData.append('latitude', String(userData.latitude || '0'))
       
       // Optional professional fields
-      if (safeData.bio) formData.append('bio', safeData.bio)
-      if (safeData.currentAddress) formData.append('currentAddress', safeData.currentAddress)
+      if (userData.bio) formData.append('bio', userData.bio)
+      if (userData.currentAddress) formData.append('currentAddress', userData.currentAddress)
       
       // Skills array
-      if (safeData.skills && Array.isArray(safeData.skills)) {
-        safeData.skills.forEach(skill => {
+      if (userData.skills && Array.isArray(userData.skills)) {
+        userData.skills.forEach(skill => {
           formData.append('skills[]', skill)
         })
       }
       
       // Media files
-      if (safeData.profilePicture) formData.append('photo', safeData.profilePicture)
-      if (safeData.galleryImages) {
-        safeData.galleryImages.forEach(image => {
+      if (userData.profilePicture) formData.append('photo', userData.profilePicture)
+      if (userData.galleryImages) {
+        userData.galleryImages.forEach(image => {
           formData.append('images', image)
         })
       }
-      if (safeData.galleryVideos) {
-        safeData.galleryVideos.forEach(video => {
+      if (userData.galleryVideos) {
+        userData.galleryVideos.forEach(video => {
           formData.append('videos', video)
         })
       }
     } else {
       // Client fields
-      if (safeData.phone) formData.append('phone', safeData.phone)
-      formData.append('lat', safeData.latitude || '0')
-      formData.append('lng', safeData.longitude || '0')
+      formData.append('phone', String(userData.phone || ''))
+      formData.append('lat', String(userData.latitude || '0'))
+      formData.append('lng', String(userData.longitude || '0'))
     }
     
-    // Send password securely in JSON body
-    formData.append('password', password)
+    // Add password
+    formData.append('password', userData.password)
     
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      body: formData,
+    const data = await httpClient.upload(endpoint, formData, {
+      requestId: 'signup',
+      retryAttempts: 0 // Don't retry signup
     })
 
-    const data = await response.json()
-    
-    if (!response.ok || data.error) {
+    if (data.error) {
       throw new Error(data.message || 'Signup failed')
     }
 
+    // Store auth data
     if (data.data?.token) {
       storage.set('token', data.data.token)
       storage.set('user', data.data.user)
@@ -111,16 +113,16 @@ class AuthService {
     return data.data
   }
 
+  /**
+   * Logout user
+   */
   async logout() {
     try {
       const token = this.getToken()
       if (token) {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
+        await httpClient.post('/auth/logout', {}, {
+          requestId: 'logout',
+          retryAttempts: 0
         })
       }
     } catch (error) {
@@ -132,102 +134,82 @@ class AuthService {
     }
   }
 
+  /**
+   * Get stored token
+   */
   getToken() {
     return storage.get('token')
   }
 
+  /**
+   * Get stored user
+   */
   getUser() {
     return storage.get('user')
   }
 
+  /**
+   * Get stored user type
+   */
   getUserType() {
     return storage.get('userType')
   }
 
+  /**
+   * Check if user is authenticated
+   */
   isAuthenticated() {
     return !!this.getToken()
   }
 
+  /**
+   * Fetch user profile
+   */
   async fetchUserProfile(userType = null) {
     const currentUserType = userType || this.getUserType()
-    const token = this.getToken()
     
-    if (!token) {
+    if (!this.getToken()) {
       throw new Error('No authentication token found')
     }
     
-    if (currentUserType === 'professional') {
-      const response = await fetch(`${API_BASE_URL}/professionals/`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+    const endpoint = currentUserType === 'professional' 
+      ? '/professionals/' 
+      : '/users/'
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Authentication failed')
-        }
-        throw new Error(`HTTP ${response.status}: Failed to fetch profile`)
-      }
-
-      const data = await response.json()
-      
-      if (data.error) {
-        throw new Error(data.message || 'Failed to fetch profile')
-      }
-
-      if (data.data) {
-        storage.set('user', data.data)
-      }
-
-      return data.data
-    } else {
-      const response = await fetch(`${API_BASE_URL}/users/`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Authentication failed')
-        }
-        throw new Error(`HTTP ${response.status}: Failed to fetch profile`)
-      }
-
-      const data = await response.json()
-      
-      if (data.error) {
-        throw new Error(data.message || 'Failed to fetch profile')
-      }
-
-      if (data.data) {
-        storage.set('user', data.data)
-      }
-
-      return data.data
-    }
-  }
-
-  async updateUser(userData, userType = null) {
-    const currentUserType = userType || this.getUserType()
-    const endpoint = currentUserType === 'professional' ? '/auth/professionals/profile' : '/auth/users/profile'
-    const token = this.getToken()
-    
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(userData)
+    const data = await httpClient.get(endpoint, {
+      requestId: `profile-${currentUserType}`,
+      retryAttempts: 2
     })
 
-    const data = await response.json()
+    if (data.error) {
+      if (data.message && data.message.includes('401')) {
+        throw new Error('Authentication failed')
+      }
+      throw new Error(data.message || 'Failed to fetch profile')
+    }
+
+    if (data.data) {
+      storage.set('user', data.data)
+    }
+
+    return data.data
+  }
+
+  /**
+   * Update user profile
+   */
+  async updateUser(userData, userType = null) {
+    const currentUserType = userType || this.getUserType()
+    const endpoint = currentUserType === 'professional' 
+      ? '/auth/professionals/profile' 
+      : '/auth/users/profile'
     
-    if (!response.ok || data.error) {
+    const data = await httpClient.put(endpoint, userData, {
+      requestId: 'update-profile',
+      retryAttempts: 1
+    })
+
+    if (data.error) {
       throw new Error(data.message || 'Update failed')
     }
 
@@ -238,22 +220,18 @@ class AuthService {
     return data.data
   }
 
+  /**
+   * Upload profile picture
+   */
   async uploadProfilePicture(file) {
-    const token = this.getToken()
     const formData = new FormData()
     formData.append('photo', file)
     
-    const response = await fetch(`${API_BASE_URL}/users/profile-photo`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      },
-      body: formData
+    const data = await httpClient.upload('/users/profile-photo', formData, {
+      requestId: 'upload-profile-picture'
     })
 
-    const data = await response.json()
-    
-    if (!response.ok || data.error) {
+    if (data.error) {
       throw new Error(data.message || 'Upload failed')
     }
 
@@ -264,6 +242,16 @@ class AuthService {
     }
 
     return data.data
+  }
+
+  /**
+   * Cancel all auth-related requests
+   */
+  cancelAuthRequests() {
+    httpClient.cancelRequest('login')
+    httpClient.cancelRequest('signup')
+    httpClient.cancelRequest('logout')
+    httpClient.cancelRequest('update-profile')
   }
 }
 

@@ -3,7 +3,7 @@ import BaseApiService from '../api/baseApi'
 class FavoriteService extends BaseApiService {
   async getFavorites() {
     try {
-      const data = await this.get('/favorites/', true, 3 * 60 * 1000) // 3min cache
+      const data = await this.get('/users/favorites/', true, 3 * 60 * 1000) // 3min cache
       return this.handleArrayResponse(data)
     } catch (error) {
       return []
@@ -11,19 +11,19 @@ class FavoriteService extends BaseApiService {
   }
 
   async addFavorite(professionalId) {
-    const data = await this.post('/favorites/', { professionalId })
+    const data = await this.post('/users/favorites/', { professionalId })
     
     // Invalidate favorites cache
-    this.cache.invalidate('/favorites/')
+    this.cache.invalidate('/users/favorites/')
     
     return this.handleResponse(data, 'Failed to add favorite')
   }
 
   async removeFavorite(favoriteId) {
-    const data = await this.delete(`/favorites/${favoriteId}`)
+    const data = await this.delete(`/users/favorites/${favoriteId}`)
     
     // Invalidate favorites cache
-    this.cache.invalidate('/favorites/')
+    this.cache.invalidate('/users/favorites/')
     
     return this.handleResponse(data, 'Failed to remove favorite')
   }

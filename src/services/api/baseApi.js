@@ -23,7 +23,10 @@ class BaseApiService {
   }
 
   async post(endpoint, data) {
-    return this.http.post(endpoint, data)
+    console.log('📤 BaseAPI POST:', { endpoint, data })
+    const result = await this.http.post(endpoint, data)
+    console.log('📥 BaseAPI POST Result:', { endpoint, result })
+    return result
   }
 
   async put(endpoint, data) {

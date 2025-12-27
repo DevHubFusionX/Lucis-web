@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { theme } from '../../../lib/theme'
-import { ArrowRight, ArrowLeft, Mail, Lock, User, Eye, EyeOff, Camera, CheckCircle, Phone, MapPin, Upload, X } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Mail, Lock, User, Eye, EyeOff, Camera, CheckCircle, Phone, MapPin, Upload, X, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import authService from '../../../services/authService'
 
 const STEPS = [
   { id: 1, title: 'Account', description: 'Basic information' },
@@ -43,6 +44,7 @@ export default function ProfessionalSignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [previewUrls, setPreviewUrls] = useState([])
+  const [notification, setNotification] = useState(null)
 
   // Auto-get location when entering Step 2
   useEffect(() => {
@@ -50,6 +52,11 @@ export default function ProfessionalSignupPage() {
       getCurrentLocation()
     }
   }, [currentStep])
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message })
+    setTimeout(() => setNotification(null), 5000)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -60,56 +67,38 @@ export default function ProfessionalSignupPage() {
     }
     
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match')
+      showNotification('error', 'Passwords do not match')
       return
     }
     
     setIsLoading(true)
     try {
-      const formDataToSend = new FormData()
-      
-      // Add text fields
-      formDataToSend.append('email', formData.email)
-      formDataToSend.append('phone', formData.phone)
-      formDataToSend.append('password', formData.password)
-      formDataToSend.append('firstName', formData.firstName)
-      formDataToSend.append('lastName', formData.lastName)
-      formDataToSend.append('baseCity', formData.baseCity)
-      formDataToSend.append('latitude', formData.latitude)
-      formDataToSend.append('longitude', formData.longitude)
-      formDataToSend.append('bio', formData.bio)
-      
-      if (formData.currentAddress) {
-        formDataToSend.append('currentAddress', formData.currentAddress)
+      // Prepare user data for signup
+      const userData = {
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        baseCity: formData.baseCity,
+        latitude: parseFloat(formData.latitude),
+        longitude: parseFloat(formData.longitude),
+        bio: formData.bio,
+        skills: formData.skills,
+        currentAddress: formData.currentAddress,
+        galleryImages: formData.media.filter(file => file.type.startsWith('image/')),
+        galleryVideos: formData.media.filter(file => file.type.startsWith('video/'))
       }
+
+      const result = await authService.signup(userData, 'professional')
       
-      // Add skills array
-      formData.skills.forEach(skill => {
-        formDataToSend.append('skills[]', skill)
-      })
-      
-      // Add media files
-      formData.media.forEach(file => {
-        formDataToSend.append('media', file)
-      })
-
-      const response = await fetch('https://lucis-api.onrender.com/api/v1/auth/professionals/sign-up', {
-        method: 'POST',
-        body: formDataToSend
-      })
-
-      const data = await response.json()
-
-      if (data.error) {
-        alert(data.message || 'Signup failed')
-      } else {
-        // Store token and redirect
-        localStorage.setItem('token', data.data.token)
+      showNotification('success', 'Account created successfully! Redirecting...')
+      setTimeout(() => {
         window.location.href = '/photographer'
-      }
+      }, 1500)
     } catch (error) {
       console.error('Signup error:', error)
-      alert('An error occurred during signup')
+      showNotification('error', error.message || 'An error occurred during signup')
     } finally {
       setIsLoading(false)
     }
@@ -181,6 +170,25 @@ export default function ProfessionalSignupPage() {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-50 to-white">
+      
+      {/* Notification Toast */}
+      {notification && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-lg ${
+            notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+          } text-white`}
+        >
+          {notification.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5" />
+          ) : (
+            <XCircle className="w-5 h-5" />
+          )}
+          <span className="font-medium">{notification.message}</span>
+        </motion.div>
+      )}
       
       {/* Left Side - Progress & Info */}
       <div className="hidden lg:flex lg:w-2/5 relative bg-gradient-to-br from-gray-900 to-black overflow-hidden p-16 flex-col justify-between">
@@ -659,8 +667,17 @@ export default function ProfessionalSignupPage() {
               >
                 <div className="absolute inset-0 bg-accent-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                 <span className="relative flex items-center justify-center gap-3">
-                  {isLoading ? 'Submitting...' : currentStep === 4 ? 'Submit Application' : 'Continue'}
-                  {!isLoading && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      {currentStep === 4 ? 'Submit Application' : 'Continue'}
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
                 </span>
               </button>
             </div>

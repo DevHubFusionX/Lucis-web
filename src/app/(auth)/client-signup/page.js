@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { GoogleLogin } from '@react-oauth/google'
 import { theme } from '../../../lib/theme'
-import { ArrowRight, Mail, Lock, User, Eye, EyeOff, Sparkles, CheckCircle } from 'lucide-react'
+import { ArrowRight, Mail, Lock, User, Eye, EyeOff, Sparkles, CheckCircle, Phone, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
 import authService from '../../../services/auth/authService'
 import Image from 'next/image'
@@ -12,27 +12,43 @@ import Image from 'next/image'
 export default function ClientSignupPage() {
   const { signup } = useAuth()
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: ''
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [currentStep, setCurrentStep] = useState(1)
+  const [notification, setNotification] = useState(null)
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message })
+    setTimeout(() => setNotification(null), 5000)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match')
+      showNotification('error', 'Passwords do not match')
       return
     }
+    
     setIsLoading(true)
+    
     try {
-      await signup(formData, 'client')
+      const result = await signup(formData, 'client')
+      
+      if (result && !result.success) {
+        showNotification('error', result.error || 'Signup failed. Please try again.')
+      } else {
+        showNotification('success', 'Account created successfully! Redirecting...')
+      }
     } catch (error) {
-      console.error('Signup error:', error)
+      showNotification('error', error.message || 'An error occurred during signup. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -53,6 +69,25 @@ export default function ClientSignupPage() {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-50 to-white">
+      
+      {/* Notification Toast */}
+      {notification && (
+        <motion.div
+          initial={{ opacity: 0, y: -50 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -50 }}
+          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-lg ${
+            notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+          } text-white`}
+        >
+          {notification.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5" />
+          ) : (
+            <XCircle className="w-5 h-5" />
+          )}
+          <span className="font-medium">{notification.message}</span>
+        </motion.div>
+      )}
       
       {/* Left Side - Benefits */}
       <div className="hidden lg:flex lg:w-2/5 relative bg-gradient-to-br from-gray-900 to-black overflow-hidden p-16 flex-col justify-between">
@@ -185,17 +220,33 @@ export default function ClientSignupPage() {
             onSubmit={handleSubmit}
             className="space-y-6"
           >
-            {/* Full Name */}
+            {/* First Name */}
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                 <User className="w-5 h-5" />
               </div>
               <input
                 type="text"
-                name="name"
-                value={formData.name}
+                name="firstName"
+                value={formData.firstName}
                 onChange={handleChange}
-                placeholder="Full name"
+                placeholder="First name"
+                required
+                className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:border-accent-500 focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
+              />
+            </div>
+
+            {/* Last Name */}
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <User className="w-5 h-5" />
+              </div>
+              <input
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                placeholder="Last name"
                 required
                 className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:border-accent-500 focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
               />
@@ -212,6 +263,22 @@ export default function ClientSignupPage() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="Email address"
+                required
+                className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:border-accent-500 focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
+              />
+            </div>
+
+            {/* Phone */}
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                <Phone className="w-5 h-5" />
+              </div>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="Phone number (e.g., +2348022342671)"
                 required
                 className="w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl focus:border-accent-500 focus:outline-none transition-colors text-gray-900 placeholder:text-gray-400"
               />
@@ -290,8 +357,17 @@ export default function ClientSignupPage() {
             >
               <div className="absolute inset-0 bg-accent-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
               <span className="relative flex items-center justify-center gap-3">
-                {isLoading ? 'Creating account...' : 'Create Account'}
-                {!isLoading && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Creating account...
+                  </>
+                ) : (
+                  <>
+                    Create Account
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </span>
             </button>
 

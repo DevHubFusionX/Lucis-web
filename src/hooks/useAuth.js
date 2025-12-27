@@ -2,6 +2,8 @@
 import { useState, useEffect, createContext, useContext } from 'react'
 import { useRouter } from 'next/navigation'
 import { AuthService } from '../services'
+import logger from '../utils/logger'
+import { getErrorMessage } from '../utils/errors'
 
 const AuthContext = createContext()
 
@@ -38,6 +40,7 @@ export const AuthProvider = ({ children }) => {
   const signup = async (userData, type = 'client') => {
     try {
       const data = await AuthService.signup(userData, type)
+      
       setUser(data.user)
       setUserType(type)
       
@@ -46,7 +49,8 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, data }
     } catch (error) {
-      return { success: false, error: error.message }
+      logger.error('Signup failed', error, { userType: type })
+      return { success: false, error: getErrorMessage(error) }
     }
   }
 

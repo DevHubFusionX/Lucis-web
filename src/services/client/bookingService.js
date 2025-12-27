@@ -8,14 +8,25 @@ class ClientBookingService extends BaseApiService {
     const data = await this.post('/bookings/', sanitizedData)
     
     // Invalidate bookings cache
-    this.cache.invalidate(/^\/bookings\/users\//);
+    this.cache.invalidate('/bookings/users');
     
     return this.handleResponse(data, 'Failed to create booking')
   }
 
   async getBookings() {
     try {
+      const user = storage.get('user')
+      if (!user?.id) throw new Error('User not found')
+      
+      // Use the correct endpoint without user ID in path
       const data = await this.get('/bookings/users', true, 2 * 60 * 1000) // 2min cache
+      
+      // Handle paginated response structure
+      if (data?.data?.records) {
+        return data.data.records
+      }
+      
+      // Fallback for non-paginated responses
       return this.handleArrayResponse(data)
     } catch (error) {
       if (error.message === 'Booking was not found') {
@@ -34,7 +45,7 @@ class ClientBookingService extends BaseApiService {
     const data = await this.patch(`/bookings/cancel/${bookingId}`)
     
     // Invalidate bookings cache
-    this.cache.invalidate(/^\/bookings\/users\//);
+    this.cache.invalidate('/bookings/users');
     
     return this.handleResponse(data, 'Failed to cancel booking')
   }

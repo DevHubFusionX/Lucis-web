@@ -1,101 +1,40 @@
 'use client'
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import Link from 'next/link'
-import { ClientNotificationService } from '../../../../services/client'
+import { useState, useEffect } from 'react'
 import { theme } from '../../../../lib/theme'
+import { 
+  Bell, 
+  Calendar, 
+  CheckCircle2, 
+  AlertCircle, 
+  MessageSquare, 
+  DollarSign, 
+  Clock,
+  MoreVertical,
+  Check,
+  Trash2,
+  Inbox,
+  X,
+  MapPin,
+  Camera
+} from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import notificationService from '../../../../services/client/notificationService'
 
-const ICON_CONFIG = {
-  booking: { path: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2v16a2 2 0 002 2z', color: theme.colors.primary[800], bg: theme.colors.primary[100] },
-  message: { path: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-4l-4 4z', color: '#3B82F6', bg: '#E0F2FE' },
-  review: { path: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.837-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z', color: theme.colors.accent[500], bg: theme.colors.accent[50] },
-  default: { path: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', color: theme.colors.gray[600], bg: theme.colors.gray[100] }
+const NOTIFICATION_ICONS = {
+  booking: { icon: Calendar, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+  payment: { icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+  message: { icon: MessageSquare, color: 'text-blue-500', bg: 'bg-blue-50' },
+  alert: { icon: AlertCircle, color: 'text-orange-500', bg: 'bg-orange-50' },
+  success: { icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-50' },
+  default: { icon: Bell, color: 'text-gray-500', bg: 'bg-gray-50' }
 }
-
-const getIconConfig = (type) => ICON_CONFIG[type?.toLowerCase()] || ICON_CONFIG.default
-
-const NotificationCard = ({ notification, onMarkAsRead }) => {
-  const icon = getIconConfig(notification.type)
-  const isRead = notification.isRead
-
-  return (
-    <div 
-      className="p-5 rounded-2xl cursor-pointer transition-all hover:shadow-lg"
-      style={{
-        backgroundColor: isRead ? theme.colors.white : theme.colors.gray[50],
-        border: `1px solid ${isRead ? theme.colors.gray[200] : theme.colors.primary[200]}`
-      }}
-      onClick={() => !isRead && onMarkAsRead(notification.id)}
-    >
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center" style={{backgroundColor: icon.bg}}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: icon.color}}>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon.path} />
-          </svg>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-bold" style={{color: theme.colors.neutral.deepGray, fontFamily: theme.typography.fontFamily.sans.join(', ')}}>
-              {notification.title || notification.type || 'Notification'}
-            </h3>
-            {!isRead && <div className="w-2 h-2 rounded-full" style={{backgroundColor: theme.colors.primary[800]}}></div>}
-          </div>
-          <p className="text-sm leading-relaxed mb-2" style={{color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ')}}>
-            {notification.message || (notification.data?.message) || 'You have a new notification'}
-          </p>
-          <p className="text-xs font-medium" style={{color: theme.colors.gray[400], fontFamily: theme.typography.fontFamily.sans.join(', ')}}>
-            {new Date(notification.createdAt).toLocaleString()}
-          </p>
-        </div>
-
-        {!isRead && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onMarkAsRead(notification.id)
-            }}
-            className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:shadow-md"
-            style={{backgroundColor: theme.colors.primary[800], color: theme.colors.white, fontFamily: theme.typography.fontFamily.sans.join(', ')}}
-          >
-            Mark as read
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-const LoadingSkeleton = () => (
-  <div className="space-y-3">
-    {[...Array(3)].map((_, i) => (
-      <div key={i} className="p-5 rounded-2xl animate-pulse" style={{backgroundColor: theme.colors.gray[50]}}>
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl" style={{backgroundColor: theme.colors.gray[200]}}></div>
-          <div className="flex-1 space-y-2">
-            <div className="h-4 rounded w-1/4" style={{backgroundColor: theme.colors.gray[200]}}></div>
-            <div className="h-3 rounded w-3/4" style={{backgroundColor: theme.colors.gray[200]}}></div>
-          </div>
-        </div>
-      </div>
-    ))}
-  </div>
-)
-
-const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed" style={{backgroundColor: theme.colors.gray[50], borderColor: theme.colors.gray[200]}}>
-    <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{backgroundColor: theme.colors.primary[100]}}>
-      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: theme.colors.primary[800]}}>
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-      </svg>
-    </div>
-    <h3 className="text-xl font-semibold mb-2" style={{color: theme.colors.neutral.deepGray, fontFamily: theme.typography.fontFamily.display.join(', ')}}>No notifications</h3>
-    <p style={{color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ')}}>You're all caught up!</p>
-  </div>
-)
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
+  const [selectedNotif, setSelectedNotif] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   useEffect(() => {
     fetchNotifications()
@@ -103,84 +42,286 @@ export default function NotificationsPage() {
 
   const fetchNotifications = async () => {
     try {
-      const data = await ClientNotificationService.getNotifications()
-      setNotifications(data)
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error)
+      setLoading(true)
+      const data = await notificationService.getNotifications()
+      setNotifications(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleMarkAsRead = useCallback(async (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? {...n, isRead: true} : n))
+  const handleOpenDetail = async (notif) => {
+    setSelectedNotif(notif)
+    setDetailLoading(true)
     try {
-      await ClientNotificationService.markAsRead(id)
-    } catch (error) {
-      console.error('Failed to mark as read:', error)
-      setNotifications(prev => prev.map(n => n.id === id ? {...n, isRead: false} : n))
+      const details = await notificationService.getNotificationDetail(notif.id)
+      setSelectedNotif(details)
+      if (!notif.isRead) {
+        markAsRead(notif.id)
+      }
+    } catch (err) {
+      console.error('Failed to fetch detail:', err)
+    } finally {
+      setDetailLoading(false)
     }
-  }, [])
+  }
 
-  const handleMarkAllAsRead = useCallback(async () => {
-    setNotifications(prev => prev.map(n => ({...n, isRead: true})))
+  const markAsRead = async (id) => {
     try {
-      await ClientNotificationService.markAllAsRead()
-    } catch (error) {
-      console.error('Failed to mark all as read:', error)
-      fetchNotifications()
+      await notificationService.markAsRead(id)
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
+    } catch (err) {
+      console.error('Failed to mark as read:', err)
     }
-  }, [])
+  }
 
-  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications])
+  const markAllRead = async () => {
+    try {
+      await notificationService.markAllAsRead()
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
+    } catch (err) {
+      console.error('Failed to mark all as read:', err)
+    }
+  }
+
+  const filteredNotifications = notifications.filter(n => {
+    if (filter === 'unread') return !n.isRead
+    return true
+  })
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2 text-sm">
-        <Link href="/client" className="hover:underline" style={{color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ')}}>Dashboard</Link>
-        <span style={{color: theme.colors.gray[300]}}>/</span>
-        <span className="font-medium" style={{color: theme.colors.neutral.deepGray, fontFamily: theme.typography.fontFamily.sans.join(', ')}}>Inbox</span>
+    <div className="min-h-screen pb-32">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
+          <div>
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-gray-900 tracking-tight" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+              Notifications
+            </h1>
+            <p className="text-gray-500 mt-4 font-medium">
+              Stay updated with your bookings, payments, and messages.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+             <button 
+               onClick={markAllRead}
+               className="px-4 py-2 text-xs font-black uppercase tracking-widest text-primary-600 hover:text-primary-800 transition-colors"
+               style={{ color: theme.colors.primary[600] }}
+             >
+               Mark all as read
+             </button>
+             <div className="flex bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
+                <button 
+                  onClick={() => setFilter('all')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${filter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                  All
+                </button>
+                <button 
+                  onClick={() => setFilter('unread')}
+                  className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${filter === 'unread' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                  Unread
+                </button>
+             </div>
+          </div>
+        </div>
+
+        {/* Notifications List */}
+        <div className="space-y-4">
+          {loading ? (
+            [1, 2, 3].map(i => (
+              <div key={i} className="h-24 bg-white rounded-3xl animate-pulse border border-gray-100" />
+            ))
+          ) : filteredNotifications.length > 0 ? (
+            <AnimatePresence mode="popLayout">
+              {filteredNotifications.map((notif, idx) => {
+                const typeInfo = NOTIFICATION_ICONS[notif.type?.toLowerCase()] || NOTIFICATION_ICONS.default
+                const Icon = typeInfo.icon
+                
+                return (
+                  <motion.div
+                    key={notif.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.4, delay: idx * 0.05 }}
+                    onClick={() => handleOpenDetail(notif)}
+                    className={`group bg-white p-6 rounded-[2rem] border border-gray-100 transition-all duration-300 relative flex gap-6 cursor-pointer ${!notif.isRead ? 'shadow-lg border-primary-50 ring-1 ring-primary-50/50' : 'hover:shadow-md'}`}
+                  >
+                    {!notif.isRead && (
+                      <div className="absolute top-6 right-6 w-2 h-2 rounded-full" style={{ backgroundColor: theme.colors.accent[500] }} />
+                    )}
+                    
+                    <div className={`shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center ${typeInfo.bg} ${typeInfo.color} shadow-sm group-hover:scale-110 transition-transform duration-500`}>
+                       <Icon size={24} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                         <span className={`text-[10px] font-black uppercase tracking-widest ${typeInfo.color}`}>
+                           {notif.type || 'Notification'}
+                         </span>
+                         <span className="text-gray-300 font-medium">•</span>
+                         <div className="flex items-center gap-1 text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                            <Clock size={12} />
+                            {new Date(notif.createdAt).toLocaleDateString()}
+                         </div>
+                      </div>
+                      
+                      <h3 className={`text-lg font-bold text-gray-900 mb-1 ${!notif.isRead ? 'pr-4' : ''}`}>
+                        {notif.title || 'New Notification'}
+                      </h3>
+                      <p className="text-sm text-gray-500 font-medium leading-relaxed truncate">
+                        {notif.message}
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <button className="p-2 text-gray-300 hover:text-gray-500 transition-colors">
+                          <MoreVertical size={20} />
+                       </button>
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[3rem] border border-gray-100 shadow-sm text-center px-6">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6 text-gray-300">
+                <Inbox size={40} />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+                All caught up
+              </h3>
+              <p className="text-gray-500 max-w-xs font-medium">
+                You don't have any notifications to show right now.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" style={{color: theme.colors.neutral.deepGray, fontFamily: theme.typography.fontFamily.display.join(', ')}}>Notifications</h1>
-          <p className="mt-1" style={{color: theme.colors.gray[600], fontFamily: theme.typography.fontFamily.sans.join(', ')}}>Stay updated with your bookings and messages</p>
-        </div>
-        {unreadCount > 0 && (
-          <button 
-            onClick={handleMarkAllAsRead}
-            className="px-4 py-2 rounded-xl text-sm font-semibold transition-all hover:shadow-md"
-            style={{backgroundColor: theme.colors.primary[800], color: theme.colors.white, fontFamily: theme.typography.fontFamily.sans.join(', ')}}
-          >
-            Mark all as read
-          </button>
-        )}
-      </div>
-
-      {unreadCount > 0 && (
-        <div className="px-4 py-2 rounded-xl inline-block" style={{backgroundColor: '#FEE2E2'}}>
-          <span className="text-sm font-semibold" style={{color: '#DC2626', fontFamily: theme.typography.fontFamily.sans.join(', ')}}>
-            {unreadCount} unread notification{unreadCount > 1 ? 's' : ''}
-          </span>
-        </div>
-      )}
-
-      <div className="space-y-3">
-        {loading ? (
-          <LoadingSkeleton />
-        ) : notifications.length === 0 ? (
-          <EmptyState />
-        ) : (
-          notifications.map(notification => (
-            <NotificationCard 
-              key={notification.id || Math.random()} 
-              notification={notification} 
-              onMarkAsRead={handleMarkAsRead}
+      {/* Detail Modal */}
+      <AnimatePresence>
+        {selectedNotif && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedNotif(null)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
-          ))
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-6 right-6">
+                 <button 
+                  onClick={() => setSelectedNotif(null)}
+                  className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 transition-colors"
+                 >
+                   <X size={20} />
+                 </button>
+              </div>
+
+              <div className="p-8 pb-0">
+                 {(() => {
+                   const typeInfo = NOTIFICATION_ICONS[selectedNotif.type?.toLowerCase()] || NOTIFICATION_ICONS.default
+                   const DetailIcon = typeInfo.icon
+                   return (
+                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${typeInfo.bg} ${typeInfo.color}`}>
+                        <DetailIcon size={24} />
+                     </div>
+                   )
+                 })()}
+                 
+                 <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                       <span className={`text-[10px] font-black uppercase tracking-widest ${NOTIFICATION_ICONS[selectedNotif.type?.toLowerCase()]?.color || 'text-gray-400'}`}>
+                         {selectedNotif.type || 'Notification'}
+                       </span>
+                       <span className="text-gray-300">•</span>
+                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                         {new Date(selectedNotif.createdAt).toLocaleString()}
+                       </span>
+                    </div>
+                    <h2 className="text-3xl font-black text-gray-900" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+                      {selectedNotif.title || 'Notification Details'}
+                    </h2>
+                    <p className="text-gray-500 font-medium leading-relaxed">
+                      {selectedNotif.message}
+                    </p>
+                 </div>
+
+                 {detailLoading ? (
+                    <div className="mt-8 py-10 flex flex-col items-center gap-4 text-gray-400">
+                       <div className="w-8 h-8 border-4 border-gray-100 border-t-accent-500 rounded-full animate-spin"></div>
+                       <span className="text-xs font-bold uppercase tracking-widest">Loading details...</span>
+                    </div>
+                 ) : selectedNotif.data && (
+                   <div className="mt-8 pt-8 border-t border-gray-50 pb-8">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-4">Related Information</h4>
+                      
+                      {selectedNotif.data.user && (
+                        <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50">
+                           <img 
+                            src={selectedNotif.data.user.profilePicture?.url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"} 
+                            className="w-12 h-12 rounded-xl object-cover"
+                           />
+                           <div>
+                              <p className="text-sm font-black text-gray-900">{selectedNotif.data.user.firstName} {selectedNotif.data.user.lastName}</p>
+                              <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                 <MapPin size={10} />
+                                 {selectedNotif.data.location || 'Nearby'}
+                              </div>
+                           </div>
+                        </div>
+                      )}
+
+                      {selectedNotif.data.serviceType && (
+                        <div className="mt-4 grid grid-cols-2 gap-4">
+                           <div className="p-4 rounded-2xl bg-gray-50">
+                              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Service Type</p>
+                              <p className="text-xs font-black text-gray-900">{selectedNotif.data.serviceType}</p>
+                           </div>
+                           <div className="p-4 rounded-2xl bg-gray-50">
+                              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Status</p>
+                              <span className="inline-flex px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[8px] font-black uppercase tracking-widest">
+                                {selectedNotif.data.status}
+                              </span>
+                           </div>
+                        </div>
+                      )}
+                   </div>
+                 )}
+              </div>
+
+              <div className="p-8 bg-gray-50/50 flex gap-4">
+                 <button 
+                  onClick={() => setSelectedNotif(null)}
+                  className="flex-1 py-4 bg-white border border-gray-300 rounded-2xl font-black text-xs uppercase tracking-widest text-gray-900 hover:bg-gray-50 transition-all shadow-sm"
+                 >
+                   Close
+                 </button>
+                 {selectedNotif.data?.professionalId && (
+                   <button className="flex-1 py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all" style={{ backgroundColor: theme.colors.primary[900] }}>
+                     View Booking
+                   </button>
+                 )}
+              </div>
+            </motion.div>
+          </div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   )
 }

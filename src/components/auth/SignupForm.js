@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useForm } from '../../hooks/useForm'
 import { validateSignupForm } from '../../utils/validation'
 import { theme } from '../../lib/theme'
+import { useToast } from '../ui/Toast'
 
 export default function SignupForm ({
   formData,
@@ -15,6 +16,8 @@ export default function SignupForm ({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [focusedField, setFocusedField] = useState(null)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const { addToast } = useToast()
 
   const initialValues = {
     fullName: '',
@@ -31,18 +34,60 @@ export default function SignupForm ({
     data => validateSignupForm(data, isProfessional)
   )
 
+  // Password strength calculation
+  const passwordStrength = useMemo(() => {
+    const password = values.password
+    if (!password) return { strength: 0, label: '', color: '' }
+    
+    let strength = 0
+    if (password.length >= 8) strength++
+    if (password.length >= 12) strength++
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++
+    if (/\d/.test(password)) strength++
+    if (/[^a-zA-Z0-9]/.test(password)) strength++
+
+    const levels = [
+      { strength: 0, label: '', color: '' },
+      { strength: 1, label: 'Weak', color: theme.colors.accent[500] },
+      { strength: 2, label: 'Fair', color: '#f59e0b' },
+      { strength: 3, label: 'Good', color: '#3b82f6' },
+      { strength: 4, label: 'Strong', color: '#10b981' },
+      { strength: 5, label: 'Very Strong', color: '#059669' }
+    ]
+
+    return levels[strength]
+  }, [values.password])
+
   const onFormSubmit = async formValues => {
     setSubmitError('')
     const result = await onSubmit(formValues)
     if (!result.success && result.error) {
       setSubmitError(result.error)
+      addToast(result.error, 'error')
+    } else if (result.success) {
+      setShowSuccess(true)
+      addToast('Account created successfully! Redirecting...', 'success')
     }
     return result
   }
 
   return (
     <div className='flex items-center justify-center lg:col-span-1 col-span-1'>
-      <div className='w-full max-w-md p-6 sm:p-10'>
+      <div className='w-full max-w-md p-6 sm:p-10 relative'>
+        {/* Success Overlay */}
+        {showSuccess && (
+          <div className='absolute inset-0 bg-gradient-to-br from-green-500/95 to-emerald-600/95 rounded-2xl flex items-center justify-center z-50 animate-fadeIn backdrop-blur-sm'>
+            <div className='text-center space-y-4'>
+              <div className='w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto animate-scaleIn'>
+                <svg className='w-12 h-12 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={3} d='M5 13l4 4L19 7' />
+                </svg>
+              </div>
+              <h3 className='text-2xl font-bold text-white'>Welcome!</h3>
+              <p className='text-white/90'>Account created successfully...</p>
+            </div>
+          </div>
+        )}
         {/* Logo */}
         <div className='flex items-center justify-center transform hover:scale-105 transition-transform duration-300 '>
           <img src='/Logo/logo.svg' alt='Lucis Logo' className='h-auto w-42' />
@@ -485,6 +530,28 @@ export default function SignupForm ({
                 </svg>
               </button>
             </div>
+            {/* Password Strength Indicator */}
+            {values.password && passwordStrength.strength > 0 && (
+              <div className='mt-2 space-y-1'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-xs font-medium' style={{ color: theme.colors.gray[300] }}>
+                    Password Strength
+                  </span>
+                  <span className='text-xs font-semibold' style={{ color: passwordStrength.color }}>
+                    {passwordStrength.label}
+                  </span>
+                </div>
+                <div className='h-1.5 bg-gray-700 rounded-full overflow-hidden'>
+                  <div 
+                    className='h-full transition-all duration-300 rounded-full'
+                    style={{ 
+                      width: `${(passwordStrength.strength / 5) * 100}%`,
+                      backgroundColor: passwordStrength.color
+                    }}
+                  />
+                </div>
+              </div>
+            )}
             {errors.password && (
               <p
                 className='text-sm font-medium mt-2 flex items-center gap-1 animate-slideDown'
@@ -708,9 +775,52 @@ export default function SignupForm ({
           </p>
         </div>
 
-        
+        <style jsx>{`
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
 
-         
+          @keyframes slideDown {
+            from {
+              opacity: 0;
+              transform: translateY(-8px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes scaleIn {
+            from {
+              opacity: 0;
+              transform: scale(0.5);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+
+          .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out;
+          }
+
+          .animate-slideDown {
+            animation: slideDown 0.3s ease-out;
+          }
+
+          .animate-scaleIn {
+            animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+        `}</style>
       </div>
     </div>
   )

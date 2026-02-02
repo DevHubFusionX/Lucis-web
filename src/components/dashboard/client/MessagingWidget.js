@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import { theme } from '../../../lib/theme'
 import { useRouter } from 'next/navigation'
@@ -6,11 +5,7 @@ import { useRouter } from 'next/navigation'
 export default function MessagingWidget({ loading }) {
   const router = useRouter()
   
-  const fadeIn = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 }
-  }
+
 
   if (loading) {
     return (
@@ -33,7 +28,7 @@ export default function MessagingWidget({ loading }) {
   }
 
   return (
-    <motion.div variants={fadeIn} className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
        <h2 className="text-xl font-black text-gray-900 tracking-tight mb-8" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>Messages</h2>
        <div className="space-y-6">
           {[
@@ -63,6 +58,6 @@ export default function MessagingWidget({ loading }) {
             </div>
           ))}
        </div>
-    </motion.div>
+    </div>
   )
 }

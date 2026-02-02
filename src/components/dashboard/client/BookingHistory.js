@@ -1,14 +1,9 @@
-import { motion } from 'framer-motion'
 import { CheckCircle } from 'lucide-react'
 import { theme } from '../../../lib/theme'
 import BookingStatusBadge from './BookingStatusBadge'
 
 export default function BookingHistory({ bookings, loading }) {
-  const fadeIn = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 }
-  }
+
 
   if (loading) {
     return (
@@ -34,7 +29,7 @@ export default function BookingHistory({ bookings, loading }) {
   }
 
   return (
-    <motion.div variants={fadeIn} className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-xl font-black text-gray-900 tracking-tight" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>Booking History</h2>
       </div>
@@ -42,7 +37,7 @@ export default function BookingHistory({ bookings, loading }) {
       <div className="space-y-4">
         {bookings.length > 0 ? (
           bookings.map((booking) => (
-            <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl hover:bg-gray-50 transition-colors">
+            <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl">
                <div className="flex items-center gap-4">
                   <img 
                     src={booking.professional?.profilePicture?.url || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=100&h=100&q=80"}
@@ -71,6 +66,6 @@ export default function BookingHistory({ bookings, loading }) {
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }

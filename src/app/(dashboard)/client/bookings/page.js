@@ -1,341 +1,385 @@
 'use client'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { ClientBookingService } from '../../../../services/client'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  ChevronRight,
+  Camera,
+  Search,
+  Filter,
+  Loader2,
+  ArrowUpRight,
+  ArrowRight,
+  CreditCard,
+  CheckCircle2,
+  Check,
+  XCircle,
+  Clock3,
+  SlidersHorizontal,
+  X,
+  CreditCard as PaymentIcon,
+  ShoppingBag
+} from 'lucide-react'
+
+import { useClientBookings } from '../../../../hooks/useBookings'
 import { theme } from '../../../../lib/theme'
 import BookingDetailsModal from '../../../../components/BookingDetailsModal'
-import { Calendar, MapPin, Clock, DollarSign, ChevronRight, Camera, Search, Filter } from 'lucide-react'
 
 const STATUS_CONFIG = {
-  confirmed: { bg: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', label: 'Confirmed', border: 'rgba(34, 197, 94, 0.2)' },
-  upcoming: { bg: theme.colors.primary[50], color: theme.colors.primary[600], label: 'Upcoming', border: theme.colors.primary[100] },
-  completed: { bg: theme.colors.gray[50], color: theme.colors.gray[500], label: 'Completed', border: theme.colors.gray[100] },
-  cancelled: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', label: 'Cancelled', border: 'rgba(239, 68, 68, 0.2)' }
+  confirmed: {
+    bg: '#ecfdf5',
+    color: '#059669',
+    label: 'Confirmed',
+    icon: CheckCircle2,
+  },
+  upcoming: {
+    bg: '#eff6ff',
+    color: '#2563eb',
+    label: 'Upcoming',
+    icon: Clock3,
+  },
+  completed: {
+    bg: '#f8fafc',
+    color: '#64748b',
+    label: 'Completed',
+    icon: CheckCircle2,
+  },
+  cancelled: {
+    bg: '#fef2f2',
+    color: '#dc2626',
+    label: 'Cancelled',
+    icon: XCircle,
+  },
+  pending: {
+    bg: '#fff7ed',
+    color: '#ea580c',
+    label: 'Pending',
+    icon: Clock3,
+  }
 }
 
-const getStatusConfig = (status) => STATUS_CONFIG[status?.toLowerCase()] || { bg: theme.colors.gray[50], color: theme.colors.gray[500], label: status || 'Unknown', border: theme.colors.gray[100] }
-
-const sortBookings = (bookings, sortBy) => {
-  return [...bookings].sort((a, b) => {
-    const dateA = new Date(a.createdAt || a.date)
-    const dateB = new Date(b.createdAt || b.date)
-    const priceA = a.totalPrice || 0
-    const priceB = b.totalPrice || 0
-
-    switch(sortBy) {
-      case 'newest': return dateB - dateA
-      case 'oldest': return dateA - dateB
-      case 'price-low': return priceA - priceB
-      case 'price-high': return priceB - priceA
-      default: return 0
-    }
-  })
+const getStatusConfig = (status) => STATUS_CONFIG[status?.toLowerCase()] || {
+  bg: '#f8fafc',
+  color: '#64748b',
+  label: status || 'Unknown',
+  icon: Clock3,
 }
 
-const BookingCard = ({ booking, onViewDetails, loadingBookingId }) => {
-  const statusConfig = getStatusConfig(booking.status)
-  const duration = Math.round((new Date(booking.endDateTime) - new Date(booking.startDateTime)) / 60000)
-  const isLoading = loadingBookingId === booking.id
-  const dateObj = new Date(booking.startDateTime)
-
-  return (
-    <div className="bg-white rounded-lg border hover:shadow-md transition-all duration-200 overflow-hidden" style={{ borderColor: theme.colors.gray[200] }}>
-      <div className="p-6">
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Date */}
-          <div className="flex-shrink-0">
-            <div className="text-center">
-              <div className="text-sm font-medium" style={{ color: theme.colors.gray[500] }}>
-                {dateObj.toLocaleDateString(undefined, { month: 'short' })}
-              </div>
-              <div className="text-3xl font-semibold text-gray-900">
-                {dateObj.getDate()}
-              </div>
-              <div className="text-xs" style={{ color: theme.colors.gray[400] }}>
-                {dateObj.toLocaleDateString(undefined, { year: 'numeric' })}
-              </div>
-            </div>
-          </div>
-
-          {/* Professional Info */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                {booking.professional?.profilePicture ? (
-                  <img src={booking.professional.profilePicture} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center" style={{ color: theme.colors.gray[300] }}>
-                    <Camera size={24} />
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium mb-1" style={{ color: theme.colors.primary[600] }}>
-                  {booking.serviceType || 'Photography Session'}
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {booking.professional?.firstName} {booking.professional?.lastName}
-                </h3>
-                
-                <div className="flex flex-wrap gap-4 text-sm" style={{ color: theme.colors.gray[600] }}>
-                  <div className="flex items-center gap-2">
-                    <Clock size={16} />
-                    <span>{typeof duration === 'number' && !isNaN(duration) ? duration : 60} min</span>
-                  </div>
-                  {booking.location && (
-                    <div className="flex items-center gap-2">
-                      <MapPin size={16} />
-                      <span className="truncate">{booking.location.address || 'TBD'}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Status & Price */}
-          <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-4">
-            <div className="text-right">
-              <div className="text-2xl font-semibold text-gray-900 mb-2">
-                ₦{(booking.price || booking.totalPrice || 0).toLocaleString()}
-              </div>
-              <span 
-                className="inline-block px-3 py-1 rounded-full text-xs font-medium"
-                style={{ backgroundColor: statusConfig.bg, color: statusConfig.color }}
-              >
-                {statusConfig.label}
-              </span>
-            </div>
-            
-            <button 
-              onClick={() => onViewDetails(booking.id)}
-              disabled={isLoading}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: theme.colors.primary[700] }}
-            >
-              {isLoading ? 'Loading...' : 'View Details'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const LoadingSkeleton = () => (
-  <div className="space-y-4">
-    {[...Array(3)].map((_, i) => (
-      <div key={i} className="bg-white rounded-[2.5rem] p-6 border border-gray-100 flex flex-col md:flex-row gap-6 animate-pulse">
-         <div className="w-20 h-24 bg-gray-50 rounded-2xl shrink-0"></div>
-         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex gap-4">
-               <div className="w-16 h-16 bg-gray-50 rounded-2xl"></div>
-               <div className="flex-1 space-y-2 py-2">
-                 <div className="w-24 h-3 bg-gray-50 rounded"></div>
-                 <div className="w-32 h-5 bg-gray-50 rounded"></div>
-               </div>
-            </div>
-            <div className="space-y-3 py-2">
-               <div className="w-32 h-4 bg-gray-50 rounded"></div>
-               <div className="w-40 h-4 bg-gray-50 rounded"></div>
-            </div>
-         </div>
-         <div className="w-full md:w-32 flex flex-col items-end gap-3">
-            <div className="w-20 h-6 bg-gray-50 rounded-full"></div>
-            <div className="w-24 h-8 bg-gray-50 rounded"></div>
-         </div>
-      </div>
-    ))}
+const FilterSection = ({ title, children }) => (
+  <div className="mb-8">
+    <h3 className="text-xs font-bold uppercase tracking-wider mb-4 text-gray-400" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>{title}</h3>
+    {children}
   </div>
 )
 
-const EmptyState = () => (
-  <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
-    <div className="w-24 h-24 rounded-full bg-blue-50 flex items-center justify-center mb-6">
-      <Camera className="w-12 h-12 text-blue-500" />
-    </div>
-    <h3 className="text-2xl font-black text-gray-900 mb-3" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>No sessions yet</h3>
-    <p className="text-lg text-gray-400 mb-8 max-w-md font-medium">You haven't booked any photography sessions yet. Start exploring to find the perfect professional for your next event.</p>
-    <Link 
-      href="/client/search" 
-      className="px-8 py-4 rounded-2xl font-black text-sm text-white shadow-2xl hover:-translate-y-1 transition-all flex items-center gap-2"
-      style={{ backgroundColor: theme.colors.primary[900] }}
+const BookingCard = ({ booking, onClick }) => {
+  const statusConfig = getStatusConfig(booking.status)
+  const dateObj = new Date(booking.startDateTime)
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.3 }}
+      className="group bg-white rounded-2xl sm:rounded-3xl border border-gray-100 overflow-hidden hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300 flex flex-col md:flex-row cursor-pointer"
+      onClick={onClick}
     >
-      <Search size={20} />
-      Discover Talent
-    </Link>
+      {/* Visual Area */}
+      <div className="relative h-48 md:h-auto md:w-64 shrink-0 bg-gray-50 overflow-hidden">
+        {booking.professional?.profilePicture?.url ? (
+          <Image
+            fill
+            src={booking.professional.profilePicture.url}
+            alt=""
+            className="object-cover group-hover:scale-105 transition-transform duration-700"
+            sizes="(max-width: 768px) 100vw, 256px"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-200">
+            <Camera size={48} />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:bg-gradient-to-r md:from-black/20"></div>
+
+        {/* Date Badge */}
+        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md rounded-2xl p-2.5 min-w-[60px] text-center shadow-lg">
+          <p className="text-[10px] font-bold uppercase text-gray-400 leading-none mb-1">{dateObj.toLocaleDateString(undefined, { month: 'short' })}</p>
+          <p className="text-xl font-black text-gray-900 leading-none">{dateObj.getDate().toString().padStart(2, '0')}</p>
+        </div>
+
+        {/* Status Badge */}
+        <div className="absolute bottom-4 left-4">
+          <span
+            className="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 backdrop-blur-md border border-white/20"
+            style={{ backgroundColor: statusConfig.bg + 'CC', color: statusConfig.color }}
+          >
+            <statusConfig.icon size={14} />
+            {statusConfig.label}
+          </span>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 p-6 md:p-8 flex flex-col">
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: theme.colors.accent[500] }}>
+              {booking.serviceType || 'Photography Session'}
+            </p>
+            <h3 className="text-xl md:text-2xl font-bold text-gray-900 truncate" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+              {booking.professional?.firstName} {booking.professional?.lastName}
+            </h3>
+          </div>
+          <div className="text-right ml-4">
+            <p className="text-2xl font-black text-gray-900">₦{(booking.totalPrice || 0).toLocaleString()}</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Price</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="flex items-center gap-3 text-sm font-medium text-gray-600">
+            <div className="p-2 bg-gray-50 rounded-xl text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+              <Clock size={16} />
+            </div>
+            <span>{dateObj.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} • {booking.package?.duration || 60} mins</span>
+          </div>
+          {booking.location && (
+            <div className="flex items-center gap-3 text-sm font-medium text-gray-600">
+              <div className="p-2 bg-gray-50 rounded-xl text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+                <MapPin size={16} />
+              </div>
+              <span className="truncate">{booking.location.address || 'Location TBD'}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-auto flex items-center justify-between pt-6 border-t border-gray-50">
+          <p className="text-xs text-gray-400 font-medium tracking-wide">
+            Booked on {new Date(booking.createdAt).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' })}
+          </p>
+          <div className="flex items-center gap-1 text-xs font-bold text-blue-600 group-hover:gap-2 transition-all">
+            View details <ArrowRight size={14} />
+          </div>
+        </div>
+
+      </div>
+    </motion.div>
+  )
+}
+
+const StatCard = ({ label, value, icon: Icon, color }) => (
+  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-4">
+    <div className="p-4 rounded-2xl" style={{ backgroundColor: color + '10', color: color }}>
+      <Icon size={24} />
+    </div>
+    <div>
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{label}</p>
+      <p className="text-xl font-black text-gray-900">{value}</p>
+    </div>
   </div>
 )
 
 export default function BookingsPage() {
   const [filterStatus, setFilterStatus] = useState('all')
   const [sortBy, setSortBy] = useState('newest')
-  const [bookings, setBookings] = useState([])
-  const [loading, setLoading] = useState(true)
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [loadingBookingId, setLoadingBookingId] = useState(null)
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
 
-  useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        const data = await ClientBookingService.getBookings()
-        setBookings(data || [])
-      } catch (error) {
-        console.error('Failed to fetch bookings:', error)
-        setBookings([])
-      } finally {
-        setLoading(false)
+  const { data: bookings = [], isLoading } = useClientBookings()
+
+  const sortedBookings = useMemo(() => {
+    let result = [...bookings]
+
+    if (filterStatus !== 'all') {
+      if (filterStatus === 'upcoming') {
+        result = result.filter(b => new Date(b.startDateTime) >= new Date() && b.status !== 'cancelled')
+      } else if (filterStatus === 'past') {
+        result = result.filter(b => new Date(b.startDateTime) < new Date())
+      } else {
+        result = result.filter(b => b.status === filterStatus)
       }
     }
-    fetchBookings()
-  }, [])
 
-  const handleViewDetails = useCallback(async (bookingId) => {
-    setLoadingBookingId(bookingId)
-    try {
-      const details = await ClientBookingService.getBooking(bookingId)
-      setSelectedBooking(details)
-      setIsModalOpen(true)
-    } catch (error) {
-      console.error('Failed to fetch booking details:', error)
-      alert('Failed to load booking details')
-    } finally {
-      setLoadingBookingId(null)
-    }
-  }, [])
+    return result.sort((a, b) => {
+      const dateA = new Date(a.startDateTime)
+      const dateB = new Date(b.startDateTime)
+      if (sortBy === 'newest') return dateB - dateA
+      if (sortBy === 'oldest') return dateA - dateB
+      if (sortBy === 'price-high') return b.totalPrice - a.totalPrice
+      if (sortBy === 'price-low') return a.totalPrice - b.totalPrice
+      return 0
+    })
+  }, [bookings, filterStatus, sortBy])
 
-  const filteredBookings = useMemo(() => {
-    const now = new Date()
-    
-    // Separate bookings into upcoming and past
-    const upcomingBookings = bookings.filter(b => new Date(b.startDateTime) >= now)
-    const pastBookings = bookings.filter(b => new Date(b.startDateTime) < now)
-    
-    if (filterStatus === 'all') return [...upcomingBookings, ...pastBookings]
-    if (filterStatus === 'upcoming') return upcomingBookings.filter(b => b.status === 'pending' || b.status === 'accepted' || b.status === 'confirmed')
-    if (filterStatus === 'past') return pastBookings
-    if (filterStatus === 'confirmed') return bookings.filter(b => b.status === 'accepted' || b.status === 'confirmed')
-    return bookings.filter(b => b.status === filterStatus)
-  }, [bookings, filterStatus])
-
-  const sortedBookings = useMemo(() => sortBookings(filteredBookings, sortBy), [filteredBookings, sortBy])
+  const stats = useMemo(() => ({
+    total: bookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0),
+    count: bookings.length,
+    upcoming: bookings.filter(b => new Date(b.startDateTime) >= new Date() && b.status !== 'cancelled').length
+  }), [bookings])
 
   return (
-    <div className="min-h-full bg-gray-50/50 font-sans p-4 sm:p-6 lg:p-10 pb-32">
-      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
-        
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold text-gray-900 mb-1" style={{ fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
-              My Bookings
-            </h1>
-            <p className="text-sm text-gray-500">
-              Manage and track your photography sessions
-            </p>
-          </div>
-          
-          <Link 
-            href="/client/search" 
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
-            style={{ backgroundColor: theme.colors.primary[700] }}
-          >
-            <Search size={18} />
-            Book Session
-          </Link>
-        </div>
+    <div className="flex flex-col md:flex-row font-sans min-h-screen bg-gray-50/30" style={{ fontFamily: theme.typography.fontFamily.sans.join(', ') }}>
 
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-          {['all', 'upcoming', 'confirmed', 'completed', 'cancelled'].map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all whitespace-nowrap ${
-                filterStatus === status 
-                  ? 'text-white' 
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-              style={filterStatus === status ? { backgroundColor: theme.colors.primary[700] } : {}}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Sort */}
-            <div className="bg-white p-6 rounded-lg border" style={{ borderColor: theme.colors.gray[200] }}>
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Sort By</h3>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{ borderColor: theme.colors.gray[200], focusRing: theme.colors.primary[500] }}
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-              </select>
-            </div>
-
-            {/* Stats */}
-            <div className="bg-white p-6 rounded-lg border" style={{ borderColor: theme.colors.gray[200] }}>
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Overview</h3>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-xs" style={{ color: theme.colors.gray[500] }}>Total Spent</div>
-                  <div className="text-2xl font-semibold text-gray-900">
-                    ₦{bookings.reduce((sum, b) => sum + (b.price || b.totalPrice || 0), 0).toLocaleString()}
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t" style={{ borderColor: theme.colors.gray[100] }}>
-                  <div>
-                    <div className="text-xs" style={{ color: theme.colors.gray[500] }}>Completed</div>
-                    <div className="text-xl font-semibold text-gray-900">{bookings.filter(b => b.status === 'completed').length}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs" style={{ color: theme.colors.gray[500] }}>Upcoming</div>
-                    <div className="text-xl font-semibold text-gray-900">{bookings.filter(b => b.status === 'upcoming' || b.status === 'confirmed' || b.status === 'accepted').length}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bookings List */}
-          <div className="lg:col-span-3">
-             {loading ? (
-                <div className="flex flex-col gap-4">
-                   <LoadingSkeleton />
-                </div>
-             ) : sortedBookings.length > 0 ? (
-                <div className="flex flex-col gap-4">
-                   {sortedBookings.map(booking => (
-                     <BookingCard 
-                       key={booking.id} 
-                       booking={booking} 
-                       onViewDetails={handleViewDetails}
-                       loadingBookingId={loadingBookingId}
-                     />
-                   ))}
-                </div>
-             ) : (
-                <EmptyState />
-             )}
-          </div>
-        </div>
+      {/* Mobile Filter Toggle */}
+      <div className="md:hidden sticky top-4 z-40 px-4 pt-4">
+        <button
+          onClick={() => setShowMobileFilters(true)}
+          className="w-full text-white px-8 py-4 rounded-full font-bold shadow-2xl flex items-center justify-center gap-2 min-h-[48px] active:scale-95 transition-transform"
+          style={{ backgroundColor: theme.colors.primary[900] }}
+        >
+          <SlidersHorizontal size={20} />
+          <span>Filters & Stats</span>
+        </button>
       </div>
 
-      <BookingDetailsModal 
-        booking={selectedBooking} 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      {/* Sidebar - Matches Search Style */}
+      <AnimatePresence>
+        {(showMobileFilters || true) && (
+          <aside className={`fixed inset-y-0 left-0 z-50 w-full sm:w-80 bg-white border-r border-gray-100 transform transition-transform duration-300 md:translate-x-0 md:relative md:block ${showMobileFilters ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className="h-full overflow-y-auto p-8">
+              <div className="flex items-center justify-between mb-8 md:hidden">
+                <h2 className="text-xl font-bold" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>Overview</h2>
+                <button onClick={() => setShowMobileFilters(false)}><X /></button>
+              </div>
+
+              <div className="space-y-8">
+                {/* Stats in Sidebar */}
+                <FilterSection title="Account Overview">
+                  <div className="space-y-4">
+                    <div className="p-5 bg-blue-50/50 rounded-3xl border border-blue-100">
+                      <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Total Booked</p>
+                      <p className="text-2xl font-black text-blue-900">₦{stats.total.toLocaleString()}</p>
+                    </div>
+                    <div className="p-5 bg-orange-50/50 rounded-3xl border border-orange-100">
+                      <p className="text-[10px] font-bold text-orange-400 uppercase tracking-widest mb-1">Upcoming Events</p>
+                      <p className="text-2xl font-black text-orange-900">{stats.upcoming}</p>
+                    </div>
+                  </div>
+                </FilterSection>
+
+                <FilterSection title="Status Filter">
+                  <div className="flex flex-col gap-1">
+                    {['all', 'upcoming', 'past', 'confirmed', 'cancelled'].map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setFilterStatus(status)}
+                        className={`flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold capitalize transition-all ${filterStatus === status
+                          ? 'bg-gray-900 text-white shadow-lg'
+                          : 'text-gray-500 hover:bg-gray-50'
+                          }`}
+                      >
+                        {status}
+                        {filterStatus === status && <Check size={16} />}
+                      </button>
+                    ))}
+                  </div>
+                </FilterSection>
+
+                <FilterSection title="Sort Bookings">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="w-full px-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm font-bold text-gray-700 appearance-none focus:ring-2 ring-blue-500/10 cursor-pointer"
+                  >
+                    <option value="newest">Most Recent</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="price-high">Highest Price</option>
+                    <option value="price-low">Lowest Price</option>
+                  </select>
+                </FilterSection>
+              </div>
+
+              {showMobileFilters && (
+                <div className="mt-8 pt-8 border-t border-gray-100">
+                  <button
+                    onClick={() => setShowMobileFilters(false)}
+                    className="w-full text-white py-4 rounded-xl font-bold shadow-lg"
+                    style={{ backgroundColor: theme.colors.primary[900] }}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content Area */}
+      <main className="flex-1 min-w-0 p-4 sm:p-6 md:p-10 lg:p-12">
+        <div className="max-w-5xl mx-auto">
+
+          {/* Header */}
+          <header className="mb-10 md:mb-14">
+            <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tight mb-4" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>
+              My Bookings
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="flex items-center gap-2 text-gray-500 font-medium">
+                <ShoppingBag size={18} className="text-gray-400" />
+                <span>{stats.count} total sessions</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-500 font-medium">
+                <Calendar size={18} className="text-gray-400" />
+                <span>{stats.upcoming} upcoming</span>
+              </div>
+            </div>
+          </header>
+
+          {/* Bookings List */}
+          <div className="space-y-6 md:space-y-8">
+            {isLoading ? (
+              [...Array(3)].map((_, i) => (
+                <div key={i} className="h-64 bg-white rounded-3xl border border-gray-100 animate-pulse"></div>
+              ))
+            ) : sortedBookings.length > 0 ? (
+              <AnimatePresence mode="popLayout">
+                {sortedBookings.map(booking => (
+                  <BookingCard
+                    key={booking.id}
+                    booking={booking}
+                    onClick={() => {
+                      setSelectedBooking(booking)
+                      setIsModalOpen(true)
+                    }}
+                  />
+                ))}
+              </AnimatePresence>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-gray-100"
+              >
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-300">
+                  <Camera size={32} />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>No bookings yet</h2>
+                <p className="text-gray-500 mb-8 max-w-sm mx-auto">You haven't booked any sessions yet. Find the perfect professional to capture your next moment.</p>
+                <Link
+                  href="/client/search"
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-gray-900 text-white rounded-2xl font-bold shadow-xl hover:-translate-y-1 transition-all"
+                >
+                  Start Exploring <ArrowRight size={18} />
+                </Link>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </main>
+
+      <BookingDetailsModal
+        booking={selectedBooking}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
       />
     </div>
   )

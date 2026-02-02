@@ -9,9 +9,9 @@ export default function PhotographerCard({ data, router, onViewProfile, onBookNo
   const locationText = typeof data.location === 'object' ? data.baseCity || 'Nearby' : (data.location || 'Nearby')
   
   return (
-    <div className="bg-white overflow-hidden shadow-sm border border-gray-50 hover:shadow-2xl hover:shadow-black/5 transition-all group">
+    <div className="bg-white overflow-hidden shadow-sm border border-gray-50">
       <div className="h-44 bg-gray-100 relative overflow-hidden">
-        <img src={coverImg} alt="Cover" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+        <img src={coverImg} alt="Cover" className="w-full h-full object-cover" />
       </div>
       <div className="px-8 pb-8 mt-[-3rem] relative z-10">
         <img 
@@ -37,13 +37,13 @@ export default function PhotographerCard({ data, router, onViewProfile, onBookNo
         <div className="flex gap-4">
           <button 
             onClick={() => onViewProfile ? onViewProfile(data) : router.push(`/client/search?id=${data.id}`)} 
-            className="flex-1 py-4 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-black/10"
+            className="flex-1 py-4 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-black/10"
           >
             View Profile
           </button>
           <button 
             onClick={() => onBookNow ? onBookNow(data) : router.push(`/client/search?id=${data.id}&book=true`)} 
-            className="flex-1 py-4 bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-xl shadow-orange-500/20"
+            className="flex-1 py-4 bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-orange-500/20"
             style={{ backgroundColor: theme.colors.accent[500] }}
           >
             Book Now

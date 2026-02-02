@@ -5,10 +5,10 @@ import { GoogleLogin } from '@react-oauth/google'
 import { useForm } from '../../hooks/useForm'
 import { validateLoginForm } from '../../utils/validation'
 import { theme } from '../../lib/theme'
-import authService from '../../services/auth/authService'
+import authService from '../../services/authService'
 import { useToast } from '../ui/Toast'
 
-export default function LoginForm ({
+export default function LoginForm({
   formData,
   onSubmit,
   signupLink,
@@ -26,12 +26,10 @@ export default function LoginForm ({
   )
 
   const handleGoogleSuccess = async (credentialResponse) => {
-    console.log('Google login success:', credentialResponse)
     setIsGoogleLoading(true)
     setSubmitError('')
     try {
       const result = await authService.googleLogin(credentialResponse.credential)
-      console.log('Auth service result:', result)
       if (result.success) {
         setShowSuccess(true)
         addToast('Login successful! Redirecting...', 'success')
@@ -52,7 +50,6 @@ export default function LoginForm ({
   }
 
   const handleGoogleError = (error) => {
-    console.error('Google login error:', error)
     const errorMsg = 'Google login failed. Please try again.'
     setSubmitError(errorMsg)
     addToast(errorMsg, 'error')
@@ -183,13 +180,12 @@ export default function LoginForm ({
                 className='w-full px-4 py-3.5 rounded-xl text-base transition-all duration-200 font-medium placeholder-gray-400'
                 style={{
                   backgroundColor: theme.colors.white,
-                  border: `2px solid ${
-                    errors.email
-                      ? theme.colors.accent[500]
-                      : focusedField === 'email'
+                  border: `2px solid ${errors.email
+                    ? theme.colors.accent[500]
+                    : focusedField === 'email'
                       ? theme.colors.accent[500]
                       : theme.colors.gray[200]
-                  }`,
+                    }`,
                   color: theme.colors.gray[900],
                   outline: 'none',
                   boxShadow: focusedField === 'email' ? `0 0 0 3px ${theme.colors.accent[500]}20` : 'none',
@@ -244,13 +240,12 @@ export default function LoginForm ({
                 className='w-full px-4 pr-12 py-3.5 rounded-xl text-base transition-all duration-200 font-medium placeholder-gray-400'
                 style={{
                   backgroundColor: theme.colors.white,
-                  border: `2px solid ${
-                    errors.password
-                      ? theme.colors.accent[500]
-                      : focusedField === 'password'
+                  border: `2px solid ${errors.password
+                    ? theme.colors.accent[500]
+                    : focusedField === 'password'
                       ? theme.colors.accent[500]
                       : theme.colors.gray[200]
-                  }`,
+                    }`,
                   color: theme.colors.gray[900],
                   outline: 'none',
                   boxShadow: focusedField === 'password' ? `0 0 0 3px ${theme.colors.accent[500]}20` : 'none',

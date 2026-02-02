@@ -1,12 +1,7 @@
-import { motion } from 'framer-motion'
 import { theme } from '../../../lib/theme'
 
 export default function DashboardHero({ user, loading }) {
-  const fadeIn = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 }
-  }
+
 
   if (loading) {
     return (
@@ -21,15 +16,12 @@ export default function DashboardHero({ user, loading }) {
   }
 
   return (
-    <motion.div 
-      variants={fadeIn}
-      className="relative rounded-[2.5rem] overflow-hidden bg-white shadow-xl shadow-black/5 mb-10 h-[280px] group"
-    >
+    <div className="relative rounded-[2.5rem] overflow-hidden bg-white shadow-xl shadow-black/5 mb-10 h-[280px] group">
       <div className="absolute inset-0">
         <img 
           src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=90"
           alt="Hero Background"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+          className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/20 to-transparent"></div>
       </div>
@@ -42,6 +34,6 @@ export default function DashboardHero({ user, loading }) {
           Find and book the perfect photographer for your next event
         </p>
       </div>
-    </motion.div>
+    </div>
   )
 }

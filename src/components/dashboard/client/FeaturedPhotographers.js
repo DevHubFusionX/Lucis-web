@@ -1,14 +1,9 @@
-import { motion } from 'framer-motion'
 import { Camera } from 'lucide-react'
 import { theme } from '../../../lib/theme'
 import PhotographerCard from './PhotographerCard'
 
 export default function FeaturedPhotographers({ featured, loading, router, onViewProfile, onBookNow }) {
-  const fadeIn = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 }
-  }
+
 
   if (loading) {
     return (
@@ -28,7 +23,7 @@ export default function FeaturedPhotographers({ featured, loading, router, onVie
   }
 
   return (
-    <motion.div variants={fadeIn}>
+    <div>
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-2xl font-black text-gray-900 tracking-tight" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>Featured Photographers</h2>
       </div>
@@ -53,6 +48,6 @@ export default function FeaturedPhotographers({ featured, loading, router, onVie
            <p className="text-gray-500 font-medium tracking-tight">No photographers found nearby at the moment.</p>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }

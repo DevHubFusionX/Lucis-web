@@ -6,7 +6,7 @@ import { GoogleLogin } from '@react-oauth/google'
 import { theme } from '../../../lib/theme'
 import { ArrowRight, Mail, Lock, User, Eye, EyeOff, Sparkles, CheckCircle, Phone, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
-import authService from '../../../services/auth/authService'
+import authService from '../../../services/authService'
 import Image from 'next/image'
 
 export default function ClientSignupPage() {
@@ -31,17 +31,17 @@ export default function ClientSignupPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (formData.password !== formData.confirmPassword) {
       showNotification('error', 'Passwords do not match')
       return
     }
-    
+
     setIsLoading(true)
-    
+
     try {
       const result = await signup(formData, 'client')
-      
+
       if (result && !result.success) {
         showNotification('error', result.error || 'Signup failed. Please try again.')
       } else {
@@ -69,16 +69,15 @@ export default function ClientSignupPage() {
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-gray-50 to-white">
-      
+
       {/* Notification Toast */}
       {notification && (
         <motion.div
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -50 }}
-          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-lg ${
-            notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-          } text-white`}
+          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-lg ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            } text-white`}
         >
           {notification.type === 'success' ? (
             <CheckCircle2 className="w-5 h-5" />
@@ -88,30 +87,30 @@ export default function ClientSignupPage() {
           <span className="font-medium">{notification.message}</span>
         </motion.div>
       )}
-      
+
       {/* Left Side - Benefits */}
       <div className="hidden lg:flex lg:w-2/5 relative bg-gradient-to-br from-gray-900 to-black overflow-hidden p-16 flex-col justify-between">
         {/* Background Elements */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" 
-            style={{ 
+          <div className="absolute inset-0"
+            style={{
               backgroundImage: `radial-gradient(${theme.colors.accent[500]} 1px, transparent 1px)`,
-              backgroundSize: '32px 32px' 
-            }} 
+              backgroundSize: '32px 32px'
+            }}
           />
         </div>
 
-        <motion.div 
-          animate={{ 
+        <motion.div
+          animate={{
             scale: [1, 1.2, 1],
             opacity: [0.3, 0.5, 0.3]
           }}
-          transition={{ 
+          transition={{
             duration: 8,
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute top-1/4 right-1/4 w-96 h-96 bg-accent-500/20 rounded-full blur-[100px]" 
+          className="absolute top-1/4 right-1/4 w-96 h-96 bg-accent-500/20 rounded-full blur-[100px]"
         />
 
         {/* Content */}
@@ -122,7 +121,7 @@ export default function ClientSignupPage() {
             transition={{ duration: 0.8 }}
           >
             <Link href="/" className="inline-block mb-16">
-              <h1 
+              <h1
                 className="text-4xl font-bold text-white"
                 style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
               >
@@ -130,7 +129,7 @@ export default function ClientSignupPage() {
               </h1>
             </Link>
 
-            <h2 
+            <h2
               className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight"
               style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
             >
@@ -176,11 +175,11 @@ export default function ClientSignupPage() {
       {/* Right Side - Form */}
       <div className="w-full lg:w-3/5 flex items-center justify-center p-8">
         <div className="w-full max-w-xl">
-          
+
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8">
             <Link href="/" className="inline-block">
-              <h1 
+              <h1
                 className="text-3xl font-bold text-gray-900"
                 style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
               >
@@ -200,8 +199,8 @@ export default function ClientSignupPage() {
               <Sparkles className="w-4 h-4" />
               <span>Create Account</span>
             </div>
-            
-            <h2 
+
+            <h2
               className="text-4xl md:text-5xl font-bold text-gray-900 mb-4"
               style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
             >

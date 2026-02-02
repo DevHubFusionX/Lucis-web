@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { Clock } from 'lucide-react'
 import { theme } from '../../../lib/theme'
 import { useRouter } from 'next/navigation'
@@ -6,11 +5,7 @@ import { useRouter } from 'next/navigation'
 export default function UpcomingBookings({ bookings, loading }) {
   const router = useRouter()
   
-  const fadeIn = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 }
-  }
+
 
   if (loading) {
     return (
@@ -42,7 +37,7 @@ export default function UpcomingBookings({ bookings, loading }) {
   }
 
   return (
-    <motion.div variants={fadeIn} className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
        <h2 className="text-xl font-black text-gray-900 tracking-tight mb-8" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>Upcoming Bookings</h2>
        <div className="space-y-8">
           {bookings.length > 0 ? (
@@ -73,13 +68,13 @@ export default function UpcomingBookings({ bookings, loading }) {
                  <div className="flex gap-3">
                     <button 
                       onClick={() => router.push('/client/bookings')}
-                      className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-black/10 hover:scale-105 transition-all"
+                      className="flex-1 py-3 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-black/10"
                     >
                       View Details
                     </button>
                     <button 
                       onClick={() => router.push('/client/messages')}
-                      className="flex-1 py-3 bg-white border border-gray-200 text-gray-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all"
+                      className="flex-1 py-3 bg-white border border-gray-200 text-gray-900 rounded-xl text-[10px] font-black uppercase tracking-widest"
                     >
                       Message
                     </button>
@@ -90,6 +85,6 @@ export default function UpcomingBookings({ bookings, loading }) {
             <p className="text-gray-400 text-center py-8 text-sm font-medium italic">No upcoming sessions</p>
           )}
        </div>
-    </motion.div>
+    </div>
   )
 }

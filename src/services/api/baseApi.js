@@ -1,5 +1,5 @@
 import httpClient from './httpClient'
-import apiCache from '../../utils/apiCache'
+import apiCache from './cache'
 
 class BaseApiService {
   constructor() {
@@ -7,27 +7,25 @@ class BaseApiService {
     this.cache = apiCache
   }
 
-  async get(endpoint, useCache = false, cacheTtl = null) {
-    if (useCache) {
-      const cached = this.cache.get(endpoint)
-      if (cached) return cached
+
+  async get(endpoint, useCache = false, ttl = null) {
+    if (useCache && ttl) {
+      const cachedData = this.cache.get(endpoint)
+      if (cachedData) return cachedData
+
+      const data = await this.http.get(endpoint)
+      this.cache.set(endpoint, data, ttl)
+      return data
     }
 
-    const data = await this.http.get(endpoint)
-    
-    if (useCache) {
-      this.cache.set(endpoint, data, cacheTtl)
-    }
-    
-    return data
+    return this.http.get(endpoint)
   }
+
 
   async post(endpoint, data) {
-    console.log('📤 BaseAPI POST:', { endpoint, data })
-    const result = await this.http.post(endpoint, data)
-    console.log('📥 BaseAPI POST Result:', { endpoint, result })
-    return result
+    return this.http.post(endpoint, data)
   }
+
 
   async put(endpoint, data) {
     return this.http.put(endpoint, data)

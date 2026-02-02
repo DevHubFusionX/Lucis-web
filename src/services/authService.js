@@ -9,10 +9,10 @@ class AuthService {
    * Login for clients or professionals
    */
   async login(credentials, userType = 'client') {
-    const endpoint = userType === 'professional' 
-      ? '/auth/professionals/login' 
+    const endpoint = userType === 'professional'
+      ? '/auth/professionals/login'
       : '/auth/users/login'
-    
+
     const data = await httpClient.post(endpoint, credentials, {
       requestId: 'login',
       retryAttempts: 1 // Don't retry auth failures
@@ -25,6 +25,9 @@ class AuthService {
     // Store auth data
     if (data.data?.token) {
       storage.set('token', data.data.token)
+      if (data.data.refreshToken) {
+        storage.set('refreshToken', data.data.refreshToken)
+      }
       storage.set('user', data.data.user)
       storage.set('userType', userType)
     }
@@ -36,14 +39,14 @@ class AuthService {
    * Signup for clients or professionals
    */
   async signup(userData, userType = 'client') {
-    const endpoint = userType === 'professional' 
-      ? '/auth/professionals/sign-up' 
+    const endpoint = userType === 'professional'
+      ? '/auth/professionals/sign-up'
       : '/auth/users/sign-up'
-    
+
     // Create FormData for multipart/form-data
     const formData = new FormData()
     formData.append('email', userData.email)
-    
+
     // Handle firstName and lastName properly
     if (userData.firstName && userData.lastName) {
       formData.append('firstName', userData.firstName)
@@ -53,25 +56,25 @@ class AuthService {
       formData.append('firstName', nameParts[0] || '')
       formData.append('lastName', nameParts.slice(1).join(' ') || '')
     }
-    
+
     if (userType === 'professional') {
       // Professional required fields
       formData.append('phone', String(userData.phone || ''))
       formData.append('baseCity', userData.baseCity || '')
       formData.append('longitude', String(userData.longitude || '0'))
       formData.append('latitude', String(userData.latitude || '0'))
-      
+
       // Optional professional fields
       if (userData.bio) formData.append('bio', userData.bio)
       if (userData.currentAddress) formData.append('currentAddress', userData.currentAddress)
-      
+
       // Skills array
       if (userData.skills && Array.isArray(userData.skills)) {
         userData.skills.forEach(skill => {
           formData.append('skills[]', skill)
         })
       }
-      
+
       // Media files
       if (userData.profilePicture) formData.append('photo', userData.profilePicture)
       if (userData.galleryImages) {
@@ -90,10 +93,10 @@ class AuthService {
       formData.append('lat', String(userData.latitude || '0'))
       formData.append('lng', String(userData.longitude || '0'))
     }
-    
+
     // Add password
     formData.append('password', userData.password)
-    
+
     const data = await httpClient.upload(endpoint, formData, {
       requestId: 'signup',
       retryAttempts: 0 // Don't retry signup
@@ -106,6 +109,9 @@ class AuthService {
     // Store auth data
     if (data.data?.token) {
       storage.set('token', data.data.token)
+      if (data.data.refreshToken) {
+        storage.set('refreshToken', data.data.refreshToken)
+      }
       storage.set('user', data.data.user)
       storage.set('userType', userType)
     }
@@ -126,12 +132,43 @@ class AuthService {
         })
       }
     } catch (error) {
-      console.error('Logout error:', error)
+      // Log error silently
     } finally {
       storage.remove('token')
+      storage.remove('refreshToken')
       storage.remove('user')
       storage.remove('userType')
     }
+  }
+
+  /**
+   * Google Login/Signup
+   */
+  async googleLogin(credential, userType = 'client') {
+    const endpoint = userType === 'professional'
+      ? '/auth/professionals/google-login'
+      : '/auth/users/google-login'
+
+    const data = await httpClient.post(endpoint, { credential }, {
+      requestId: 'google-login',
+      retryAttempts: 0
+    })
+
+    if (data.error) {
+      throw new Error(data.message || 'Google login failed')
+    }
+
+    // Store auth data
+    if (data.data?.token) {
+      storage.set('token', data.data.token)
+      if (data.data.refreshToken) {
+        storage.set('refreshToken', data.data.refreshToken)
+      }
+      storage.set('user', data.data.user)
+      storage.set('userType', userType)
+    }
+
+    return data.data
   }
 
   /**
@@ -167,14 +204,15 @@ class AuthService {
    */
   async fetchUserProfile(userType = null) {
     const currentUserType = userType || this.getUserType()
-    
+
     if (!this.getToken()) {
       throw new Error('No authentication token found')
     }
-    
-    const endpoint = currentUserType === 'professional' 
-      ? '/professionals/' 
-      : '/users/'
+
+    const endpoint = currentUserType === 'professional'
+      ? '/professionals'
+      : '/users'
+
 
     const data = await httpClient.get(endpoint, {
       requestId: `profile-${currentUserType}`,
@@ -200,10 +238,11 @@ class AuthService {
    */
   async updateUser(userData, userType = null) {
     const currentUserType = userType || this.getUserType()
-    const endpoint = currentUserType === 'professional' 
-      ? '/auth/professionals/profile' 
-      : '/auth/users/profile'
-    
+    const endpoint = currentUserType === 'professional'
+      ? '/professionals'
+      : '/users'
+
+
     const data = await httpClient.put(endpoint, userData, {
       requestId: 'update-profile',
       retryAttempts: 1
@@ -213,26 +252,28 @@ class AuthService {
       throw new Error(data.message || 'Update failed')
     }
 
-    if (data.data?.user) {
-      storage.set('user', data.data.user)
+    if (data.data) {
+      storage.set('user', data.data)
     }
 
     return data.data
   }
 
+
   /**
-   * Upload profile picture
+   * Update profile picture metadata (PATCH)
    */
-  async uploadProfilePicture(file) {
-    const formData = new FormData()
-    formData.append('photo', file)
-    
-    const data = await httpClient.upload('/users/profile-photo', formData, {
-      requestId: 'upload-profile-picture'
+  async updateProfilePhoto(photoData, userType = 'client') {
+    const endpoint = userType === 'professional'
+      ? '/professionals/profile-photo'
+      : '/users/profile-photo'
+
+    const data = await httpClient.patch(endpoint, photoData, {
+      requestId: 'update-profile-photo'
     })
 
     if (data.error) {
-      throw new Error(data.message || 'Upload failed')
+      throw new Error(data.message || 'Failed to update profile photo')
     }
 
     if (data.data) {
@@ -243,6 +284,30 @@ class AuthService {
 
     return data.data
   }
+
+  /**
+   * Delete profile photo (DELETE)
+   */
+  async deleteProfilePhoto(userType = 'client') {
+    const endpoint = userType === 'professional'
+      ? '/professionals/profile-photo'
+      : '/users/profile-photo'
+
+    const data = await httpClient.delete(endpoint, {
+      requestId: 'delete-profile-photo'
+    })
+
+    if (data.error) {
+      throw new Error(data.message || 'Failed to delete profile photo')
+    }
+
+    const currentUser = this.getUser()
+    const updatedUser = { ...currentUser, profilePicture: null }
+    storage.set('user', updatedUser)
+
+    return data.data
+  }
+
 
   /**
    * Cancel all auth-related requests

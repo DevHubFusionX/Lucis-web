@@ -9,9 +9,8 @@ class BookingService {
    * Create a new booking
    */
   async createBooking(bookingData) {
-    console.log('🔍 Creating booking with data:', bookingData)
-
     const data = await httpClient.post('/bookings/', bookingData, {
+
       requestId: 'create-booking',
       retryAttempts: 1 // Only retry once for mutations
     })
@@ -20,8 +19,8 @@ class BookingService {
       throw new Error(data.message || 'Failed to create booking')
     }
 
-    console.log('✅ Booking created successfully:', data.data)
     return data.data
+
   }
 
   /**
@@ -29,7 +28,7 @@ class BookingService {
    */
   async getUserBookings() {
     const user = storage.get('user')
-    
+
     if (!user?.id) {
       throw new Error('User not found')
     }
@@ -54,7 +53,7 @@ class BookingService {
     if (data.data?.records) {
       return data.data.records
     }
-    
+
     return Array.isArray(data.data) ? data.data : []
   }
 

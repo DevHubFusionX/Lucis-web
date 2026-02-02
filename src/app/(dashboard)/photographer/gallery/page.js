@@ -1,85 +1,134 @@
 'use client'
-import { useState, useEffect } from 'react'
-import professionalService from '../../../../services/professionalService'
+import { useState } from 'react'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import { theme } from '../../../../lib/theme'
+import {
+  Upload,
+  Trash2,
+  Image as ImageIcon,
+  Video,
+  Play,
+  Plus,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  X
+} from 'lucide-react'
+import { useGalleryData } from '../../../../hooks/useGallery'
+import { useToast } from '../../../../components/ui/Toast'
 
 export default function GalleryPage() {
-  const [gallery, setGallery] = useState([])
+  const { addToast } = useToast()
+  const {
+    gallery,
+    isLoading,
+    mutations: { uploadItems, deleteItem, deleteItems }
+  } = useGalleryData()
+
   const [selectedItems, setSelectedItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-
-  useEffect(() => {
-    const fetchGallery = async () => {
-      try {
-        const profile = await professionalService.getProfile()
-        console.log('🔍 DEBUG: Profile gallery:', profile.gallery)
-        setGallery(profile.gallery || [])
-      } catch (error) {
-        console.error('❌ Failed to fetch gallery:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchGallery()
-  }, [])
+  const [uploadProgress, setUploadProgress] = useState(null)
 
   const handleUploadMedia = async (event) => {
     const files = Array.from(event.target.files)
     if (files.length === 0) return
 
-    setUploading(true)
-    try {
-      const galleryItems = files.map((file, index) => {
-        const objectUrl = URL.createObjectURL(file)
-        return {
-          url: objectUrl,
-          publicId: `gallery_${Date.now()}_${index}`,
-          type: file.type.startsWith('video/') ? 'video' : 'image',
-          thumbnail: objectUrl,
-          ...(file.type.startsWith('video/') && { duration: '00:00:30' })
-        }
-      })
+    // Validation
+    const maxFileSize = 50 * 1024 * 1024
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4']
 
-      await professionalService.uploadGalleryItems(galleryItems)
-      
-      // Refresh gallery
-      const profile = await professionalService.getProfile()
-      setGallery(profile.gallery || [])
+    for (const file of files) {
+      if (!allowedTypes.some(type => file.type.startsWith(type.split('/')[0]))) {
+        addToast(`Invalid file type: ${file.name}`, 'error')
+        return
+      }
+      if (file.size > maxFileSize) {
+        addToast(`File too large: ${file.name} (Max 50MB)`, 'error')
+        return
+      }
+    }
+
+    try {
+      await uploadItems.mutateAsync({
+        files,
+        onProgress: (progress) => setUploadProgress(progress)
+      })
+      addToast(`Successfully uploaded ${files.length} item(s)`, 'success')
+      setUploadProgress(null)
     } catch (error) {
-      console.error('Failed to upload media:', error)
-      alert('Failed to upload media. Please try again.')
-    } finally {
-      setUploading(false)
+      console.error('Upload failed:', error)
+      addToast(error.message || 'Upload failed. Please try again.', 'error')
+      setUploadProgress(null)
     }
   }
 
   const handleDeleteMedia = async (itemId) => {
+    if (!confirm('Are you sure you want to delete this item?')) return
+
     try {
-      await professionalService.removeGalleryItem(itemId)
-      setGallery(gallery.filter(item => item.id !== itemId))
-      setSelectedItems(selectedItems.filter(id => id !== itemId))
+      await deleteItem.mutateAsync(itemId)
+      addToast('Item removed from gallery', 'success')
+      setSelectedItems(prev => prev.filter(id => id !== itemId))
     } catch (error) {
-      console.error('Failed to delete media:', error)
-      alert('Failed to delete media. Please try again.')
+      console.error('Delete failed:', error)
+      addToast('Failed to delete item', 'error')
+    }
+  }
+
+  const handleBatchDelete = async () => {
+    if (!confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) return
+
+    try {
+      await deleteItems.mutateAsync(selectedItems)
+      addToast(`Successfully deleted ${selectedItems.length} items`, 'success')
+      setSelectedItems([])
+    } catch (error) {
+      console.error('Batch delete failed:', error)
+      addToast('Failed to delete selected items', 'error')
     }
   }
 
   const toggleMediaSelect = (mediaId) => {
-    setSelectedItems(prev => 
+    setSelectedItems(prev =>
       prev.includes(mediaId) ? prev.filter(id => id !== mediaId) : [...prev, mediaId]
     )
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh]">
+        <Loader2 className="w-12 h-12 animate-spin mb-4" style={{ color: theme.colors.accent[500] }} />
+        <p className="text-gray-500 font-medium">Loading your masterpiece...</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-1 sm:p-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold" style={{color: '#111827'}}>Gallery</h1>
-          <p className="mt-1" style={{color: '#6B7280'}}>Manage your portfolio and showcase your work</p>
+          <h1
+            className="text-4xl font-bold text-gray-900 mb-2"
+            style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
+          >
+            Work Gallery
+          </h1>
+          <p className="text-gray-600 text-lg">Manage your portfolio and showcase your high-end work</p>
         </div>
-        <div>
+
+        <div className="flex items-center gap-3">
+          {selectedItems.length > 0 && (
+            <button
+              onClick={handleBatchDelete}
+              disabled={deleteItems.isPending}
+              className="flex items-center gap-2 px-5 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              {deleteItems.isPending ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+              Delete {selectedItems.length}
+            </button>
+          )}
+
           <input
             type="file"
             multiple
@@ -87,91 +136,163 @@ export default function GalleryPage() {
             onChange={handleUploadMedia}
             className="hidden"
             id="gallery-upload"
-            disabled={uploading}
+            disabled={uploadItems.isPending}
           />
           <label
             htmlFor="gallery-upload"
-            className="inline-block text-white px-6 py-3 rounded-xl font-medium shadow-sm hover:shadow-md transition-all cursor-pointer"
-            style={{backgroundColor: uploading ? '#9CA3AF' : '#1E3A8A'}}
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer disabled:opacity-50"
+            style={{
+              backgroundColor: theme.colors.accent[600],
+              opacity: uploadItems.isPending ? 0.7 : 1
+            }}
           >
-            {uploading ? '⏳ Uploading...' : '📤 Upload Photos/Videos'}
+            {uploadItems.isPending ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Plus size={20} />
+            )}
+            {uploadItems.isPending ? 'Uploading...' : 'Add to Gallery'}
           </label>
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      ) : gallery.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed" style={{backgroundColor: '#F9FAFB', borderColor: '#E5E7EB'}}>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{backgroundColor: '#DBEAFE'}}>
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{color: '#1E3A8A'}}>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+      {/* Upload Progress Overlay */}
+      <AnimatePresence>
+        {uploadProgress && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white p-6 rounded-2xl shadow-2xl border border-gray-100 mb-8 flex items-center gap-6"
+          >
+            <div className="relative w-16 h-16 flex-shrink-0">
+              <svg className="w-full h-full transform -rotate-90">
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="transparent"
+                  className="text-gray-100"
+                />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="28"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="transparent"
+                  strokeDasharray={175.93}
+                  strokeDashoffset={175.93 - (175.93 * uploadProgress.percent) / 100}
+                  className="text-blue-600 transition-all duration-300"
+                  style={{ color: theme.colors.accent[600] }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center font-bold text-sm">
+                {uploadProgress.percent}%
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-gray-900">Uploading your vision...</p>
+              <p className="text-sm text-gray-500">
+                Processing item {uploadProgress.current} of {uploadProgress.total}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Gallery Grid */}
+      {gallery.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 bg-gray-50/50 rounded-[3rem] border-2 border-dashed border-gray-200">
+          <div
+            className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-inner"
+            style={{ backgroundColor: theme.colors.accent[50] }}
+          >
+            <ImageIcon size={40} style={{ color: theme.colors.accent[300] }} />
           </div>
-          <h3 className="text-xl font-semibold mb-2" style={{color: '#111827'}}>No gallery items yet</h3>
-          <p className="mb-6" style={{color: '#6B7280'}}>Upload your first photos or videos to showcase your work</p>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Your gallery is empty</h3>
+          <p className="text-gray-500 mb-8 max-w-sm text-center">Showcase your best moments. Add some high-quality photos or videos to attract more clients.</p>
           <label
             htmlFor="gallery-upload"
-            className="text-white px-6 py-3 rounded-xl font-medium shadow-sm hover:shadow-md transition-all cursor-pointer"
-            style={{backgroundColor: '#1E3A8A'}}
+            className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all cursor-pointer"
           >
-            📤 Upload Media
+            Upload your first work
           </label>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {gallery.map(item => (
-            <div 
-              key={item.id} 
-              className="relative aspect-square rounded-xl overflow-hidden cursor-pointer group shadow-sm hover:shadow-lg transition-all"
-              style={{backgroundColor: '#F3F4F6', border: '1px solid #E5E7EB'}}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {gallery.map((item, idx) => (
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              key={item.id || item.publicId}
+              className="group relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-gray-100 shadow-sm hover:shadow-2xl transition-all cursor-pointer"
             >
               {item.type === 'video' ? (
-                <video className="w-full h-full object-cover" poster={item.thumbnail}>
-                  <source src={item.url} type="video/mp4" />
-                </video>
+                <div className="w-full h-full">
+                  <Image
+                    fill
+                    src={item.thumbnail}
+                    alt="Gallery item"
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10 transition-colors">
+                    <div className="w-14 h-14 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center group-hover:scale-110 transition-all border border-white/40 shadow-xl">
+                      <Play className="w-6 h-6 text-white fill-white ml-1" />
+                    </div>
+                  </div>
+                  {item.duration && (
+                    <div className="absolute bottom-4 left-4 flex items-center gap-1.5 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider border border-white/20">
+                      <Video size={12} />
+                      {item.duration}
+                    </div>
+                  )}
+                </div>
               ) : (
-                <img src={item.url || item.thumbnail} alt="Gallery item" className="w-full h-full object-cover" />
-              )}
-              
-              {/* Overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all flex items-start justify-between p-3">
-                <input
-                  type="checkbox"
-                  checked={selectedItems.includes(item.id)}
-                  onChange={() => toggleMediaSelect(item.id)}
-                  className="w-5 h-5 rounded cursor-pointer"
-                  style={{accentColor: '#1E3A8A'}}
+                <Image
+                  fill
+                  src={item.url}
+                  alt="Gallery item"
+                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                  sizes="(max-width: 768px) 50vw, 25vw"
                 />
-                <button 
-                  onClick={() => handleDeleteMedia(item.id)}
-                  className="p-1.5 rounded-lg hover:opacity-80 transition-opacity"
-                  style={{backgroundColor: '#DC2626'}}
-                >
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+              )}
+
+              {/* Selection Overlay */}
+              <div
+                className={`absolute inset-0 transition-all duration-300 ${selectedItems.includes(item.id)
+                  ? 'bg-blue-600/20 opacity-100'
+                  : 'bg-black/0 group-hover:bg-black/20 opacity-0 group-hover:opacity-100'
+                  }`}
+                onClick={() => toggleMediaSelect(item.id)}
+              >
+                <div className="absolute top-4 left-4">
+                  <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${selectedItems.includes(item.id)
+                    ? 'bg-blue-600 border-blue-600 scale-110'
+                    : 'border-white/60 bg-black/20'
+                    }`}>
+                    {selectedItems.includes(item.id) && <CheckCircle2 size={16} className="text-white" />}
+                  </div>
+                </div>
+
+                <div className="absolute top-4 right-4 translate-y-2 group-hover:translate-y-0 transition-all opacity-0 group-hover:opacity-100">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteMedia(item.id)
+                    }}
+                    className="p-3 bg-red-500/80 backdrop-blur-md text-white rounded-xl hover:bg-red-600 transition-colors shadow-lg"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
-
-              {/* Video indicator */}
-              {item.type === 'video' && (
-                <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md text-xs font-medium text-white" style={{backgroundColor: 'rgba(0,0,0,0.7)'}}>
-                  ▶️ {item.duration || '0:30'}
-                </div>
-              )}
-
-              {/* Selected Indicator */}
-              {selectedItems.includes(item.id) && (
-                <div className="absolute top-3 left-3 w-6 h-6 rounded-md flex items-center justify-center shadow-lg" style={{backgroundColor: '#1E3A8A'}}>
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              )}
-            </div>
+            </motion.div>
           ))}
         </div>
       )}

@@ -1,12 +1,7 @@
-import { motion } from 'framer-motion'
 import { theme } from '../../../lib/theme'
 
 export default function RecentBookingsSidebar({ bookings, loading }) {
-  const fadeIn = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 }
-  }
+
 
   if (loading) {
     return (
@@ -38,7 +33,7 @@ export default function RecentBookingsSidebar({ bookings, loading }) {
   }
 
   return (
-    <motion.div variants={fadeIn} className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-gray-100">
        <h2 className="text-xl font-black text-gray-900 tracking-tight mb-8" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>Booking History</h2>
        <div className="space-y-8">
           {bookings.slice(0, 2).map(booking => (
@@ -61,8 +56,8 @@ export default function RecentBookingsSidebar({ bookings, loading }) {
                    {new Date(booking.startDateTime || booking.createdAt).toLocaleDateString()}
                 </div>
                 <div className="flex gap-3">
-                   <button className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Leave Review</button>
-                   <button className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">View</button>
+                   <button className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest">Leave Review</button>
+                   <button className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl text-[10px] font-black uppercase tracking-widest">View</button>
                 </div>
              </div>
           ))}
@@ -70,6 +65,6 @@ export default function RecentBookingsSidebar({ bookings, loading }) {
             <p className="text-gray-400 text-center py-4 text-sm font-medium italic">No recent history</p>
           )}
        </div>
-    </motion.div>
+    </div>
   )
 }

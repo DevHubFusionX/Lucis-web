@@ -11,33 +11,61 @@ class ClientProfileService extends BaseApiService {
   async updateProfile(profileData) {
     const sanitizedData = sanitizeFormData(profileData)
     const data = await this.put('/users/', sanitizedData)
-    
+
     // Update local storage and invalidate cache
     if (data.data) storage.set('user', data.data)
     this.cache.invalidate('/users/')
-    
+
     return this.handleResponse(data, 'Failed to update profile')
   }
 
   async uploadProfilePicture(file) {
-    // Step 1: Upload the file to get URL and publicId
-    const formData = new FormData()
-    formData.append('file', file)
-    
-    const uploadResponse = await this.http.upload('/upload', formData)
-    
-    if (!uploadResponse.data || !uploadResponse.data.url || !uploadResponse.data.publicId) {
-      throw new Error('Failed to upload file')
+    // Import Cloudinary service dynamically
+
+    const { uploadToCloudinary, isCloudinaryConfigured } = await import('../cloudinaryService')
+    const { compressImage } = await import('../../utils/imageValidation')
+
+    // Check Cloudinary configuration
+    if (!isCloudinaryConfigured()) {
+      const error = 'Cloudinary is not configured. Please add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET to your .env.local file.'
+      throw new Error(error)
     }
-    
-    // Step 2: Update profile photo with the uploaded file info
+
+
+    // Compress the image
+    let fileToUpload = file
+    try {
+      fileToUpload = await compressImage(file, {
+        quality: 0.9,
+        maxWidth: 500,
+        maxHeight: 500
+      })
+    } catch (err) {
+      // Ignore compression errors
+    }
+
+
+    // Step 1: Upload directly to Cloudinary
+    let cloudinaryResult
+    try {
+      cloudinaryResult = await uploadToCloudinary(fileToUpload, {
+        folder: 'lucis/clients/profiles',
+        onProgress: (percent) => { }
+      })
+    } catch (err) {
+      throw err
+    }
+
+
+    // Step 2: Update profile photo with the Cloudinary URL (PATCH)
     const profilePhotoData = {
-      url: uploadResponse.data.url,
-      publicId: uploadResponse.data.publicId
+      url: cloudinaryResult.url,
+      publicId: cloudinaryResult.publicId
     }
-    
+
     const data = await this.patch('/users/profile-photo', profilePhotoData)
-    
+
+
     if (data.data) {
       const currentUser = storage.get('user')
       const updatedUser = { ...currentUser, profilePicture: data.data }
@@ -45,8 +73,23 @@ class ClientProfileService extends BaseApiService {
       this.cache.invalidate('/users/')
     }
 
+
     return this.handleResponse(data, 'Failed to update profile picture')
   }
+
+  async deleteProfilePhoto() {
+    const data = await this.delete('/users/profile-photo')
+
+    if (!data.error) {
+      const currentUser = storage.get('user')
+      const updatedUser = { ...currentUser, profilePicture: null }
+      storage.set('user', updatedUser)
+      this.cache.invalidate('/users/')
+    }
+
+    return this.handleResponse(data, 'Failed to delete profile photo')
+  }
 }
+
 
 export default new ClientProfileService()

@@ -6,17 +6,17 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import TopBar from './TopBar'
 import { theme } from '../../lib/theme'
-import { 
-  LayoutDashboard, 
-  Briefcase, 
-  Package, 
-  Calendar, 
-  Image as ImageIcon, 
-  Clock, 
-  Star, 
-  Bell, 
-  CreditCard, 
-  User, 
+import {
+  LayoutDashboard,
+  Briefcase,
+  Package,
+  Calendar,
+  Image as ImageIcon,
+  Clock,
+  Star,
+  Bell,
+  CreditCard,
+  User,
   LogOut,
   ChevronRight,
   Camera
@@ -29,7 +29,8 @@ export default function DashboardLayout({ children }) {
 
   const mainNavigation = [
     { name: 'Dashboard', href: '/photographer', icon: LayoutDashboard },
-    { name: 'Portfolio', href: '/photographer/portfolio', icon: Briefcase },
+    { name: 'Portfolio', href: '#', icon: Briefcase, comingSoon: true },
+
     { name: 'Packages', href: '/photographer/packages', icon: Package },
     { name: 'Bookings', href: '/photographer/bookings', icon: Calendar },
     { name: 'Gallery', href: '/photographer/gallery', icon: ImageIcon },
@@ -39,7 +40,8 @@ export default function DashboardLayout({ children }) {
 
   const systemNavigation = [
     { name: 'Notifications', href: '/photographer/notifications', icon: Bell, badge: 3 },
-    { name: 'Payments', href: '/photographer/payments', icon: CreditCard },
+    { name: 'Payments', href: '#', icon: CreditCard, comingSoon: true },
+
     { name: 'Profile', href: '/photographer/profile', icon: User },
     { name: 'Logout', href: '/logout', icon: LogOut }
   ]
@@ -55,16 +57,16 @@ export default function DashboardLayout({ children }) {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 lg:hidden"
           >
-            <div 
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
-              onClick={() => setSidebarOpen(false)} 
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setSidebarOpen(false)}
             />
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
-      <div 
+      <div
         className={`
           fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl
           transform transition-transform duration-300 ease-in-out
@@ -75,8 +77,8 @@ export default function DashboardLayout({ children }) {
         {/* Logo Area */}
         <div className="flex items-center h-20 px-6 border-b border-gray-200">
           <Image src="/Logo/topbar.svg" alt="Lucis" width={120} height={32} className="h-48 w-auto" />
-          <button 
-            className="lg:hidden ml-auto text-gray-400 hover:text-gray-600 transition-colors" 
+          <button
+            className="lg:hidden ml-auto text-gray-400 hover:text-gray-600 transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,12 +86,12 @@ export default function DashboardLayout({ children }) {
             </svg>
           </button>
         </div>
-        
+
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-6 px-4">
           {/* Main Section */}
           <div className="mb-8">
-            <div 
+            <div
               className="text-xs font-bold uppercase tracking-wider mb-3 px-3"
               style={{ color: theme.colors.gray[500] }}
             >
@@ -100,48 +102,62 @@ export default function DashboardLayout({ children }) {
                 const isActive = pathname === item.href
                 const Icon = item.icon
                 return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onMouseEnter={() => setHoveredItem(item.name)}
-                    onMouseLeave={() => setHoveredItem(null)}
-                    onClick={() => setSidebarOpen(false)}
-                    className="relative block"
-                  >
-                    <motion.div
-                      whileHover={{ x: 4 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`
-                        relative flex items-center px-4 py-3 rounded-xl transition-all duration-200
-                        ${isActive 
-                          ? 'text-white shadow-lg' 
-                          : 'text-gray-700 hover:bg-gray-100'
-                        }
-                      `}
-                      style={{
-                        background: isActive 
-                          ? `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})` 
-                          : 'transparent'
-                      }}
-                    >
-                      {isActive && (
+                  <div key={item.name} className="relative block">
+                    {item.comingSoon ? (
+                      <div
+                        className="relative flex items-center px-4 py-3 rounded-xl text-gray-400 cursor-not-allowed opacity-60"
+                      >
+                        <Icon className="w-5 h-5 mr-3" />
+                        <div className="flex flex-col">
+                          <span className="font-medium">{item.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-accent-500/20 text-accent-400 rounded-md font-bold mt-0.5 tracking-tighter uppercase w-fit">
+                            Coming Soon
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        onMouseEnter={() => setHoveredItem(item.name)}
+                        onMouseLeave={() => setHoveredItem(null)}
+                        onClick={() => setSidebarOpen(false)}
+                      >
                         <motion.div
-                          layoutId="activeIndicator"
-                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full"
-                          style={{ backgroundColor: theme.colors.accent[700] }}
-                        />
-                      )}
-                      <Icon 
-                        className={`w-5 h-5 mr-3 transition-transform ${
-                          hoveredItem === item.name ? 'scale-110' : 'scale-100'
-                        }`}
-                      />
-                      <span className="font-medium">{item.name}</span>
-                      {hoveredItem === item.name && !isActive && (
-                        <ChevronRight className="w-4 h-4 ml-auto" />
-                      )}
-                    </motion.div>
-                  </Link>
+                          whileHover={{ x: 4 }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`
+                            relative flex items-center px-4 py-3 rounded-xl transition-all duration-200
+                            ${isActive
+                              ? 'text-white shadow-lg'
+                              : 'text-gray-700 hover:bg-gray-100'
+                            }
+                          `}
+                          style={{
+                            background: isActive
+                              ? `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})`
+                              : 'transparent'
+                          }}
+                        >
+                          {isActive && (
+                            <motion.div
+                              layoutId="activeIndicator"
+                              className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full"
+                              style={{ backgroundColor: theme.colors.accent[700] }}
+                            />
+                          )}
+                          <Icon
+                            className={`w-5 h-5 mr-3 transition-transform ${hoveredItem === item.name ? 'scale-110' : 'scale-100'
+                              }`}
+                          />
+                          <span className="font-medium">{item.name}</span>
+                          {hoveredItem === item.name && !isActive && (
+                            <ChevronRight className="w-4 h-4 ml-auto" />
+                          )}
+                        </motion.div>
+                      </Link>
+                    )}
+                  </div>
+
                 )
               })}
             </div>
@@ -149,7 +165,7 @@ export default function DashboardLayout({ children }) {
 
           {/* System Section */}
           <div>
-            <div 
+            <div
               className="text-xs font-bold uppercase tracking-wider mb-3 px-3"
               style={{ color: theme.colors.gray[500] }}
             >
@@ -160,94 +176,77 @@ export default function DashboardLayout({ children }) {
                 const isActive = pathname === item.href
                 const Icon = item.icon
                 return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onMouseEnter={() => setHoveredItem(item.name)}
-                    onMouseLeave={() => setHoveredItem(null)}
-                    onClick={() => setSidebarOpen(false)}
-                    className="relative block"
-                  >
-                    <motion.div
-                      whileHover={{ x: 4 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`
-                        relative flex items-center px-4 py-3 rounded-xl transition-all duration-200
-                        ${isActive 
-                          ? 'text-white shadow-lg' 
-                          : 'text-gray-700 hover:bg-gray-100'
-                        }
-                      `}
-                      style={{
-                        background: isActive 
-                          ? `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})` 
-                          : 'transparent'
-                      }}
-                    >
-                      {isActive && (
+                  <div key={item.name} className="relative block">
+                    {item.comingSoon ? (
+                      <div
+                        className="relative flex items-center px-4 py-3 rounded-xl text-gray-400 cursor-not-allowed opacity-60"
+                      >
+                        <Icon className="w-5 h-5 mr-3" />
+                        <div className="flex flex-col">
+                          <span className="font-medium">{item.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 bg-accent-500/20 text-accent-400 rounded-md font-bold mt-0.5 tracking-tighter uppercase w-fit">
+                            Coming Soon
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        onMouseEnter={() => setHoveredItem(item.name)}
+                        onMouseLeave={() => setHoveredItem(null)}
+                        onClick={() => setSidebarOpen(false)}
+                      >
                         <motion.div
-                          layoutId="activeIndicatorSystem"
-                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full"
-                          style={{ backgroundColor: theme.colors.accent[700] }}
-                        />
-                      )}
-                      <Icon 
-                        className={`w-5 h-5 mr-3 transition-transform ${
-                          hoveredItem === item.name ? 'scale-110' : 'scale-100'
-                        }`}
-                      />
-                      <span className="font-medium">{item.name}</span>
-                      {item.badge && (
-                        <span 
-                          className="ml-auto px-2 py-0.5 text-xs font-bold rounded-full text-white"
-                          style={{ backgroundColor: theme.colors.accent[500] }}
+                          whileHover={{ x: 4 }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`
+                            relative flex items-center px-4 py-3 rounded-xl transition-all duration-200
+                            ${isActive
+                              ? 'text-white shadow-lg'
+                              : 'text-gray-700 hover:bg-gray-100'
+                            }
+                          `}
+                          style={{
+                            background: isActive
+                              ? `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})`
+                              : 'transparent'
+                          }}
                         >
-                          {item.badge}
-                        </span>
-                      )}
-                      {hoveredItem === item.name && !isActive && !item.badge && (
-                        <ChevronRight className="w-4 h-4 ml-auto" />
-                      )}
-                    </motion.div>
-                  </Link>
+                          {isActive && (
+                            <motion.div
+                              layoutId="activeIndicatorSystem"
+                              className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full"
+                              style={{ backgroundColor: theme.colors.accent[700] }}
+                            />
+                          )}
+                          <Icon
+                            className={`w-5 h-5 mr-3 transition-transform ${hoveredItem === item.name ? 'scale-110' : 'scale-100'
+                              }`}
+                          />
+                          <span className="font-medium">{item.name}</span>
+                          {item.badge && (
+                            <span
+                              className="ml-auto px-2 py-0.5 text-xs font-bold rounded-full text-white"
+                              style={{ backgroundColor: theme.colors.accent[500] }}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                          {hoveredItem === item.name && !isActive && !item.badge && (
+                            <ChevronRight className="w-4 h-4 ml-auto" />
+                          )}
+                        </motion.div>
+                      </Link>
+                    )}
+                  </div>
+
                 )
               })}
             </div>
           </div>
         </nav>
 
-        {/* Footer Card */}
-        <div className="p-4 border-t border-gray-200">
-          <div 
-            className="p-4 rounded-xl"
-            style={{ 
-              background: `linear-gradient(135deg, ${theme.colors.accent[50]}, ${theme.colors.accent[100]})`,
-              border: `1px solid ${theme.colors.accent[200]}`
-            }}
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <div 
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: theme.colors.accent[500] }}
-              >
-                <Star className="w-4 h-4 text-white" fill="currentColor" />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-gray-900">Pro Plan</div>
-                <div className="text-xs text-gray-600">Active</div>
-              </div>
-            </div>
-            <p className="text-xs text-gray-600 mb-3">
-              Unlock premium features and boost your visibility
-            </p>
-            <button 
-              className="w-full px-3 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:scale-105"
-              style={{ backgroundColor: theme.colors.accent[500] }}
-            >
-              Upgrade Now
-            </button>
-          </div>
-        </div>
+
       </div>
 
       {/* Main content area */}

@@ -1,17 +1,21 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { cookies } from '../utils/cookies'
-import { storage } from '../utils/storage'
+import { useAuthStore } from '../stores/authStore'
 
+/**
+ * Auth guard hook - redirects to login if not authenticated
+ */
 export function useAuthGuard() {
   const router = useRouter()
+  const { user, userType, loading } = useAuthStore()
 
   useEffect(() => {
-    const token = cookies.get('auth-token')
-    if (!token) {
-      const userType = storage.get('userType')
+    // Wait for auth to initialize
+    if (loading) return
+
+    if (!user) {
       const redirectPath = userType === 'professional' ? '/professional-login' : '/client-login'
       router.push(redirectPath)
     }
-  }, [router])
+  }, [user, userType, loading, router])
 }

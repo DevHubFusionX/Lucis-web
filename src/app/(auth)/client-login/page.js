@@ -6,10 +6,10 @@ import { GoogleLogin } from '@react-oauth/google'
 import { theme } from '../../../lib/theme'
 import { ArrowRight, Mail, Lock, Eye, EyeOff, Sparkles, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { useAuth } from '../../../hooks/useAuth'
-import authService from '../../../services/auth/authService'
+import authService from '../../../services/authService'
 import Image from 'next/image'
 
-export default function ClientLoginPage () {
+export default function ClientLoginPage() {
   const { login } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
@@ -47,16 +47,15 @@ export default function ClientLoginPage () {
 
   return (
     <div className='min-h-screen flex'>
-      
+
       {/* Notification Toast */}
       {notification && (
         <motion.div
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -50 }}
-          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-lg ${
-            notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
-          } text-white`}
+          className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-6 py-4 rounded-2xl shadow-lg ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            } text-white`}
         >
           {notification.type === 'success' ? (
             <CheckCircle2 className='w-5 h-5' />

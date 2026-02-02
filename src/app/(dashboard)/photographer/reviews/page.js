@@ -1,45 +1,18 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { theme } from '../../../../lib/theme'
-import reviewService from '../../../../services/professional/reviewService'
-import Notification from '../../../../components/ui/Notification'
+import { useProfessionalReviews } from '../../../../hooks/useProfessional'
+import { useNotify } from '../../../../stores/useNotificationStore'
 import { Star, Flag, User, Loader2, TrendingUp, Award } from 'lucide-react'
 
 export default function ReviewsPage() {
-  const [reviews, setReviews] = useState([])
-  const [reviewDetails, setReviewDetails] = useState({ averageRating: 0, totalReviews: 0 })
-  const [loading, setLoading] = useState(true)
-  const [notifications, setNotifications] = useState([])
+  const { data, isLoading } = useProfessionalReviews()
+  const notify = useNotify()
   const [flagging, setFlagging] = useState(null)
 
-  const addNotification = (type, title, message) => {
-    const id = Date.now()
-    setNotifications(prev => [...prev, { id, type, title, message }])
-    setTimeout(() => removeNotification(id), 5000)
-  }
-
-  const removeNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
-  }
-
-  useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        const data = await reviewService.getReviews()
-        console.log('🔍 DEBUG: Reviews data:', data)
-        setReviews(data.records || [])
-        setReviewDetails(data.details || { averageRating: 0, totalReviews: 0 })
-      } catch (error) {
-        console.error('❌ Failed to fetch reviews:', error)
-        addNotification('error', 'Error', 'Failed to load reviews. Please try again.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchReviews()
-  }, [])
+  const reviews = data?.records || []
+  const reviewDetails = data?.details || { averageRating: 0, totalReviews: 0 }
 
   const ratingCounts = {
     5: reviews.filter(r => r.rating === 5).length,
@@ -54,15 +27,15 @@ export default function ReviewsPage() {
   const handleFlag = async (id) => {
     setFlagging(id)
     setTimeout(() => {
-      addNotification('info', 'Review Flagged', 'This review has been flagged for moderation.')
+      notify.info('This review has been flagged for moderation.', 'Review Flagged')
       setFlagging(null)
     }, 1000)
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <div 
+        <div
           className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin"
           style={{ borderColor: theme.colors.accent[500], borderTopColor: 'transparent' }}
         />
@@ -72,15 +45,13 @@ export default function ReviewsPage() {
   }
 
   return (
-    <>
-      <Notification notifications={notifications} onClose={removeNotification} />
-      <div className="space-y-8 pb-10">
+    <div className="space-y-8 pb-10">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 
+        <h1
           className="text-4xl font-bold text-gray-900 mb-2"
           style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
         >
@@ -90,7 +61,7 @@ export default function ReviewsPage() {
       </motion.div>
 
       {/* Rating Summary */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -99,7 +70,7 @@ export default function ReviewsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Average Rating */}
           <div className="flex flex-col items-center justify-center p-8 rounded-2xl relative overflow-hidden" style={{ backgroundColor: theme.colors.accent[50] }}>
-            <div 
+            <div
               className="absolute inset-0 opacity-5"
               style={{ background: `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})` }}
             />
@@ -109,10 +80,10 @@ export default function ReviewsPage() {
                 {avgRating}
               </div>
               <div className="flex gap-1 mb-4">
-                {Array.from({length: 5}, (_, i) => (
-                  <Star 
-                    key={i} 
-                    className="w-7 h-7" 
+                {Array.from({ length: 5 }, (_, i) => (
+                  <Star
+                    key={i}
+                    className="w-7 h-7"
                     fill={i < Math.round(avgRating) ? '#F59E0B' : 'none'}
                     stroke={i < Math.round(avgRating) ? '#F59E0B' : '#D1D5DB'}
                     strokeWidth={2}
@@ -130,8 +101,8 @@ export default function ReviewsPage() {
               <h3 className="font-bold text-gray-900 text-lg">Rating Distribution</h3>
             </div>
             {[5, 4, 3, 2, 1].map(stars => (
-              <motion.div 
-                key={stars} 
+              <motion.div
+                key={stars}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2 + (5 - stars) * 0.05 }}
@@ -142,7 +113,7 @@ export default function ReviewsPage() {
                   <Star className="w-4 h-4" fill="#F59E0B" stroke="#F59E0B" />
                 </div>
                 <div className="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
-                  <motion.div 
+                  <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${reviews.length > 0 ? (ratingCounts[stars] / reviews.length) * 100 : 0}%` }}
                     transition={{ duration: 0.8, delay: 0.3 + (5 - stars) * 0.05 }}
@@ -160,18 +131,18 @@ export default function ReviewsPage() {
       {/* Reviews List */}
       <div className="space-y-4">
         {reviews.length === 0 ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center py-20 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50"
           >
-            <div 
+            <div
               className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
               style={{ backgroundColor: theme.colors.accent[50] }}
             >
               <Star className="w-10 h-10" style={{ color: theme.colors.accent[500] }} />
             </div>
-            <h3 
+            <h3
               className="text-2xl font-bold text-gray-900 mb-2"
               style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
             >
@@ -181,65 +152,64 @@ export default function ReviewsPage() {
           </motion.div>
         ) : (
           reviews.map((review, index) => (
-          <motion.div 
-            key={review.id} 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 + index * 0.05 }}
-            whileHover={{ scale: 1.01, y: -2 }}
-            className="p-6 rounded-2xl shadow-sm hover:shadow-lg transition-all bg-white border border-gray-100"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-md"
-                    style={{ background: `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})` }}
-                  >
-                    {review.user?.firstName?.[0] || <User className="w-6 h-6" />}
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900">{review.user?.firstName} {review.user?.lastName}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex gap-0.5">
-                        {Array.from({length: 5}, (_, i) => (
-                          <Star 
-                            key={i} 
-                            className="w-4 h-4" 
-                            fill={i < review.rating ? '#F59E0B' : 'none'}
-                            stroke={i < review.rating ? '#F59E0B' : '#D1D5DB'}
-                            strokeWidth={2}
-                          />
-                        ))}
+            <motion.div
+              key={review.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + index * 0.05 }}
+              whileHover={{ scale: 1.01, y: -2 }}
+              className="p-6 rounded-2xl shadow-sm hover:shadow-lg transition-all bg-white border border-gray-100"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-md"
+                      style={{ background: `linear-gradient(135deg, ${theme.colors.accent[500]}, ${theme.colors.accent[600]})` }}
+                    >
+                      {review.user?.firstName?.[0] || <User className="w-6 h-6" />}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-900">{review.user?.firstName} {review.user?.lastName}</h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <Star
+                              key={i}
+                              className="w-4 h-4"
+                              fill={i < review.rating ? '#F59E0B' : 'none'}
+                              stroke={i < review.rating ? '#F59E0B' : '#D1D5DB'}
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-400">•</span>
+                        <p className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                       </div>
-                      <span className="text-xs text-gray-400">•</span>
-                      <p className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                     </div>
                   </div>
+
+                  {/* Review Text */}
+                  <p className="text-gray-700 leading-relaxed">{review.text}</p>
                 </div>
 
-                {/* Review Text */}
-                <p className="text-gray-700 leading-relaxed">{review.text}</p>
+                {/* Flag Button */}
+                <motion.button
+                  onClick={() => handleFlag(review.id)}
+                  disabled={flagging === review.id}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Report this review"
+                >
+                  {flagging === review.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Flag className="w-5 h-5" />}
+                </motion.button>
               </div>
-
-              {/* Flag Button */}
-              <motion.button 
-                onClick={() => handleFlag(review.id)}
-                disabled={flagging === review.id}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Report this review"
-              >
-                {flagging === review.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Flag className="w-5 h-5" />}
-              </motion.button>
-            </div>
-          </motion.div>
+            </motion.div>
           ))
         )}
       </div>
     </div>
-    </>
   )
 }

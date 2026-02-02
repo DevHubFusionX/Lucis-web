@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { Camera, Calendar, Heart, MessageSquare } from 'lucide-react'
 import { theme } from '../../../lib/theme'
 import ActionCard from './ActionCard'
@@ -7,11 +6,7 @@ import { useRouter } from 'next/navigation'
 export default function ActionCardsGrid({ data, loading }) {
   const router = useRouter()
   
-  const fadeIn = {
-    initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.5 }
-  }
+
 
   if (loading) {
     return (
@@ -29,7 +24,7 @@ export default function ActionCardsGrid({ data, loading }) {
   }
 
   return (
-    <motion.div variants={fadeIn} className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
       <ActionCard 
         icon={Camera}
         label="Book a Photographer"
@@ -65,6 +60,6 @@ export default function ActionCardsGrid({ data, loading }) {
         buttonStyle={{ backgroundColor: theme.colors.gray[200], color: theme.colors.gray[900] }}
         onClick={() => router.push('/client/messages')}
       />
-    </motion.div>
+    </div>
   )
 }

@@ -2,12 +2,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../../hooks/useAuth'
-import { motion, AnimatePresence } from 'framer-motion'
 
 // Theme Import
 import { theme } from '../../../lib/theme'
 import { ClientBookingService, FavoriteService } from '../../../services/client'
-import searchService from '../../../services/searchService'
+import searchService from '../../../services/search/searchService'
+
 import PhotographerInfoModal from '../../../components/PhotographerInfoModal'
 import BookingModal from '../../../components/BookingModal'
 
@@ -24,7 +24,7 @@ import MessagingWidget from '../../../components/dashboard/client/MessagingWidge
 export default function ClientDashboard() {
   const { user } = useAuth()
   const router = useRouter()
-  
+
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState({
     bookings: [],
@@ -44,20 +44,13 @@ export default function ClientDashboard() {
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
 
-  // Animation variants
-  const stagger = {
-    animate: {
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  }
+
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        
+
         // Try to get location, fallback to NY like search page
         const loc = await new Promise((resolve) => {
           if (!navigator.geolocation) return resolve({ latitude: 40.7128, longitude: -74.0060 })
@@ -69,16 +62,16 @@ export default function ClientDashboard() {
 
         // Parallel fetching
         const [bookings, featured, favorites] = await Promise.all([
-           ClientBookingService.getBookings().catch(() => []),
-           searchService.discoverProfessionals(4, loc.latitude, loc.longitude, 50).catch(() => []),
-           FavoriteService.getFavorites().catch(() => [])
+          ClientBookingService.getBookings().catch(() => []),
+          searchService.discoverProfessionals(4, loc.latitude, loc.longitude, 50).catch(() => []),
+          FavoriteService.getFavorites().catch(() => [])
         ])
 
         // Process Bookings
-        const sortedBookings = Array.isArray(bookings) ? bookings.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)) : []
+        const sortedBookings = Array.isArray(bookings) ? bookings.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) : []
         const upcoming = sortedBookings.filter(b => ['pending', 'accepted', 'confirmed'].includes(b.status.toLowerCase())).slice(0, 3)
         const history = sortedBookings.filter(b => b.status.toLowerCase() === 'completed' || b.status.toLowerCase() === 'paid').slice(0, 5)
-        
+
         // Calculate Stats
         const completed = sortedBookings.filter(b => b.status.toLowerCase() === 'completed')
         const totalSpent = completed.reduce((sum, b) => sum + (b.totalPrice || 0), 0)
@@ -108,24 +101,19 @@ export default function ClientDashboard() {
   }, [user])
 
   return (
-    <motion.div 
-      initial="initial"
-      animate="animate"
-      variants={stagger}
-      className="pb-20"
-    >
+    <div className="pb-20">
       {/* Hero Section */}
       <DashboardHero user={user} loading={loading} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         {/* Main Column */}
         <div className="lg:col-span-8 space-y-10">
           {/* Action Cards Grid */}
           <ActionCardsGrid data={data} loading={loading} />
 
           {/* Featured Photographers Carousel */}
-          <FeaturedPhotographers 
+          <FeaturedPhotographers
             featured={data.featured}
             loading={loading}
             router={router}
@@ -157,31 +145,29 @@ export default function ClientDashboard() {
       </div>
 
       {/* Modals */}
-      <AnimatePresence>
-        {showInfoModal && selectedPhotographer && (
-          <PhotographerInfoModal
-            photographer={selectedPhotographer}
-            isOpen={showInfoModal}
-            onClose={() => setShowInfoModal(false)}
-            onBookNow={() => {
-              setShowInfoModal(false)
-              setShowBookingModal(true)
-            }}
-          />
-        )}
-        
-        {showBookingModal && selectedPhotographer && (
-          <BookingModal
-            professional={selectedPhotographer}
-            isOpen={showBookingModal}
-            onClose={() => setShowBookingModal(false)}
-            onSuccess={() => {
-              setShowBookingModal(false)
-              // Optionally refresh bookings
-            }}
-          />
-        )}
-      </AnimatePresence>
-    </motion.div>
+      {showInfoModal && selectedPhotographer && (
+        <PhotographerInfoModal
+          photographer={selectedPhotographer}
+          isOpen={showInfoModal}
+          onClose={() => setShowInfoModal(false)}
+          onBookNow={() => {
+            setShowInfoModal(false)
+            setShowBookingModal(true)
+          }}
+        />
+      )}
+
+      {showBookingModal && selectedPhotographer && (
+        <BookingModal
+          professional={selectedPhotographer}
+          isOpen={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          onSuccess={() => {
+            setShowBookingModal(false)
+            // Optionally refresh bookings
+          }}
+        />
+      )}
+    </div>
   )
 }

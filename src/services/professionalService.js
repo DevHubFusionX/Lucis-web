@@ -1,5 +1,5 @@
 import httpClient from './api/httpClient'
-import apiCache from '../utils/apiCache'
+import { apiCache } from './api/cache'
 import { storage } from '../utils/storage'
 
 /**
@@ -10,15 +10,11 @@ class ProfessionalService {
    * Get professional profile
    */
   async getProfile() {
-    const data = await httpClient.get('/professionals/', {
+    const data = await httpClient.get('/professionals', {
       requestId: 'pro-profile',
       retryAttempts: 2
     })
-
-    if (data.error) {
-      throw new Error(data.message || 'Failed to fetch profile')
-    }
-
+    // ...
     return data.data
   }
 
@@ -26,10 +22,11 @@ class ProfessionalService {
    * Update professional profile
    */
   async updateProfile(profileData) {
-    const data = await httpClient.put('/professionals/', profileData, {
+    const data = await httpClient.put('/professionals', profileData, {
       requestId: 'update-pro-profile',
       retryAttempts: 1
     })
+
 
     if (data.error) {
       throw new Error(data.message || 'Failed to update profile')
@@ -39,27 +36,79 @@ class ProfessionalService {
   }
 
   /**
-   * Upload profile picture
+   * Update profile picture (PATCH)
    */
-  async uploadProfilePicture(profilePictureData) {
+  async updateProfilePhotoMetadata(profilePictureData) {
     const data = await httpClient.patch('/professionals/profile-photo', profilePictureData, {
       requestId: 'upload-pro-photo',
       retryAttempts: 0
     })
 
     if (data.error) {
-      throw new Error(data.message || 'Failed to upload profile picture')
+      throw new Error(data.message || 'Failed to update profile picture')
+    }
+
+    if (data.data) {
+      const currentUser = storage.get('user')
+      const updatedUser = { ...currentUser, profilePicture: data.data }
+      storage.set('user', updatedUser)
+    }
+
+    return data.data
+
+  }
+
+  /**
+   * Complete flow: Upload file to Cloudinary and update metadata
+   */
+  async uploadProfilePicture(file) {
+    const { uploadToCloudinary, isCloudinaryConfigured } = await import('./cloudinaryService')
+    const { compressImage } = await import('../utils/imageValidation')
+
+    if (!isCloudinaryConfigured()) {
+      throw new Error('Cloudinary is not configured.')
+    }
+
+    let fileToUpload = file
+    try {
+      fileToUpload = await compressImage(file, { quality: 0.9, maxWidth: 500, maxHeight: 500 })
+    } catch (err) { }
+
+    const cloudinaryResult = await uploadToCloudinary(fileToUpload, {
+      folder: 'lucis/professionals/profiles'
+    })
+
+    const metadata = {
+      url: cloudinaryResult.url,
+      publicId: cloudinaryResult.publicId
+    }
+
+    return this.updateProfilePhotoMetadata(metadata)
+  }
+
+
+  /**
+   * Delete profile photo (DELETE)
+   */
+  async deleteProfilePhoto() {
+    const data = await httpClient.delete('/professionals/profile-photo', {
+      requestId: 'delete-pro-photo'
+    })
+
+    if (data.error) {
+      throw new Error(data.message || 'Failed to delete profile photo')
     }
 
     return data.data
   }
+
 
   /**
    * Get notifications for professional
    */
   async getNotifications() {
     const user = storage.get('user')
-    
+
     if (!user?.id) {
       return []
     }
@@ -81,7 +130,7 @@ class ProfessionalService {
    */
   async getNotification(notificationId) {
     const user = storage.get('user')
-    
+
     const data = await httpClient.get(`/notifications/professionals/${user.id}/${notificationId}`, {
       requestId: `notification-${notificationId}`
     })
@@ -146,7 +195,7 @@ class ProfessionalService {
     if (data.data?.records) {
       return data.data.records
     }
-    
+
     return Array.isArray(data.data) ? data.data : []
   }
 
@@ -203,7 +252,7 @@ class ProfessionalService {
    */
   async getPackages() {
     const user = storage.get('user')
-    
+
     if (!user?.id) {
       return []
     }
@@ -227,7 +276,7 @@ class ProfessionalService {
     }
 
     const packages = data.data?.records || (Array.isArray(data.data) ? data.data : [])
-    
+
     // Cache for 2 minutes
     apiCache.set(cacheKey, packages, 2 * 60 * 1000)
 
@@ -332,7 +381,7 @@ class ProfessionalService {
    */
   async getSchedules(page = 1, limit = 10) {
     const user = storage.get('user')
-    
+
     if (!user?.id) {
       return { records: [], pagination: null }
     }
@@ -358,7 +407,7 @@ class ProfessionalService {
    */
   async getSchedule(scheduleId) {
     const user = storage.get('user')
-    
+
     const data = await httpClient.get(`/schedules/${user.id}/${scheduleId}`, {
       requestId: `schedule-${scheduleId}`
     })
@@ -422,7 +471,7 @@ class ProfessionalService {
    */
   async getReviews() {
     const user = storage.get('user')
-    
+
     if (!user?.id) {
       return { records: [], details: { averageRating: 0, totalReviews: 0 } }
     }
@@ -453,15 +502,6 @@ class ProfessionalService {
     }
 
     return data.data || { records: [], pagination: null }
-  }
-
-  /**
-   * Invalidate all professional caches
-   */
-  invalidateCaches() {
-    apiCache.invalidate(/^\/packages/)
-    apiCache.invalidate(/^\/schedules/)
-    apiCache.invalidate(/^\/professionals/)
   }
 
   /**

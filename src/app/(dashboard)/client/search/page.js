@@ -10,6 +10,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import searchService from '../../../../services/search/searchService'
 import favoriteService from '../../../../services/client/favoriteService'
+import { getProfileImage, getCoverImage, getDisplayName, getSpecialty, getLocation } from '../../../../lib/avatarHelper'
 import BookingModal from '../../../../components/BookingModal'
 import PhotographerInfoModal from '../../../../components/PhotographerInfoModal'
 import ContactModal from '../../../../components/ContactModal'
@@ -383,11 +384,20 @@ export default function SearchPage() {
                   {/* Cover Image Area */}
                   <div className="relative h-56 md:h-auto md:w-80 shrink-0 bg-gray-200 overflow-hidden">
                     <img
-                      src={pro.coverImage?.url || "https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80"}
+                      src={getCoverImage(pro)}
                       alt="Cover"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:bg-gradient-to-r md:from-black/40"></div>
+
+                    {/* Profile Picture Overlay */}
+                    <div className="absolute bottom-4 left-4 hidden md:block">
+                      <img
+                        src={getProfileImage(pro)}
+                        alt={getDisplayName(pro)}
+                        className="w-16 h-16 rounded-xl object-cover border-4 border-white shadow-lg"
+                      />
+                    </div>
 
                     {/* Mobile Rating Badge */}
                     <div className="absolute bottom-4 left-4 md:hidden">
@@ -422,10 +432,10 @@ export default function SearchPage() {
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold uppercase tracking-wider mb-1.5" style={{ color: theme.colors.primary[600] }}>
-                          {pro.specialty || 'Photographer'}
+                          {getSpecialty(pro)}
                         </p>
                         <h3 className="text-gray-900 text-xl md:text-2xl font-bold leading-tight truncate" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>
-                          {pro.firstName} {pro.lastName}
+                          {getDisplayName(pro)}
                         </h3>
                       </div>
                       <div

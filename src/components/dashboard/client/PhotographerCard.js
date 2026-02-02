@@ -1,52 +1,94 @@
-import { Star, MapPin } from 'lucide-react'
+import { Star, MapPin, Camera, Calendar } from 'lucide-react'
 import { theme } from '../../../lib/theme'
+import { getProfileImage, getCoverImage, getDisplayName, getSpecialty, getLocation } from '../../../lib/avatarHelper'
 
 export default function PhotographerCard({ data, router, onViewProfile, onBookNow }) {
-  const coverImg = data.coverImage?.url || "https://images.unsplash.com/photo-1511895426328-dc8714191300?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80"
-  const profileImg = data.profilePicture?.url || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-  
-  // Handle location - can be string or object {longitude, latitude}
-  const locationText = typeof data.location === 'object' ? data.baseCity || 'Nearby' : (data.location || 'Nearby')
-  
+  const coverImg = getCoverImage(data)
+  const profileImg = getProfileImage(data)
+  const name = getDisplayName(data)
+  const specialty = getSpecialty(data)
+  const location = getLocation(data)
+
   return (
-    <div className="bg-white overflow-hidden shadow-sm border border-gray-50">
-      <div className="h-44 bg-gray-100 relative overflow-hidden">
-        <img src={coverImg} alt="Cover" className="w-full h-full object-cover" />
-      </div>
-      <div className="px-8 pb-8 mt-[-3rem] relative z-10">
-        <img 
-          src={profileImg} 
-          alt={data.firstName} 
-          className="w-24 h-24 rounded-2xl object-cover shadow-xl mb-4" 
+    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-300 group">
+      {/* Cover Image */}
+      <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden">
+        <img
+          src={coverImg}
+          alt="Cover"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <h3 className="font-black text-gray-900 text-xl mb-1" style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}>{data.firstName} {data.lastName}</h3>
-        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-6">{data.specialty || 'Creative Visionary'}</p>
-        
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-1.5">
-             <Star className="w-4 h-4 text-orange-400 fill-current" />
-             <span className="font-black text-gray-900 text-sm">{data.rating || '5.0'}</span>
-             <span className="text-gray-400 text-xs font-bold">({data.reviewCount || 120} reviews)</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-gray-400 font-bold text-xs uppercase tracking-tight">
-             <MapPin size={14} className="text-gray-300" />
-             <span>{data.distance ? `${data.distance.toFixed(1)} mi` : locationText}</span>
-          </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+
+        {/* Specialty Badge */}
+        <div className="absolute top-3 left-3">
+          <span
+            className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm"
+            style={{ color: theme.colors.primary[700] }}
+          >
+            {specialty}
+          </span>
+        </div>
+      </div>
+
+      {/* Profile Section */}
+      <div className="px-5 pb-5 -mt-10 relative z-10">
+        {/* Profile Picture */}
+        <img
+          src={profileImg}
+          alt={name}
+          className="w-20 h-20 rounded-xl object-cover shadow-lg border-4 border-white mb-3"
+        />
+
+        {/* Name & Rating */}
+        <div className="flex items-start justify-between mb-2">
+          <h3
+            className="font-bold text-gray-900 text-lg leading-tight line-clamp-1"
+            style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
+          >
+            {name}
+          </h3>
+          {data.rating && (
+            <div className="flex items-center gap-1 shrink-0 ml-2">
+              <Star className="w-4 h-4 fill-current" style={{ color: theme.colors.accent[500] }} />
+              <span className="font-bold text-gray-900 text-sm">{data.rating}</span>
+            </div>
+          )}
         </div>
 
-        <div className="flex gap-4">
-          <button 
-            onClick={() => onViewProfile ? onViewProfile(data) : router.push(`/client/search?id=${data.id}`)} 
-            className="flex-1 py-4 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-black/10"
+        {/* Stats Row */}
+        <div className="flex items-center gap-3 mb-4 text-xs text-gray-500">
+          <div className="flex items-center gap-1">
+            <MapPin size={12} className="text-gray-400" />
+            <span className="truncate">{location}</span>
+          </div>
+          {data.completedBookings > 0 && (
+            <div className="flex items-center gap-1">
+              <Calendar size={12} className="text-gray-400" />
+              <span>{data.completedBookings} shoots</span>
+            </div>
+          )}
+        </div>
+
+        {/* Bio Preview */}
+        {data.bio && (
+          <p className="text-xs text-gray-500 line-clamp-2 mb-4">{data.bio}</p>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => onViewProfile ? onViewProfile(data) : router.push(`/client/search?id=${data.id}`)}
+            className="flex-1 py-2.5 bg-gray-100 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-200 transition-colors"
           >
-            View Profile
+            Profile
           </button>
-          <button 
-            onClick={() => onBookNow ? onBookNow(data) : router.push(`/client/search?id=${data.id}&book=true`)} 
-            className="flex-1 py-4 bg-orange-500 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-orange-500/20"
+          <button
+            onClick={() => onBookNow ? onBookNow(data) : router.push(`/client/search?id=${data.id}&book=true`)}
+            className="flex-1 py-2.5 text-white text-xs font-bold rounded-lg shadow-md hover:opacity-90 transition-all"
             style={{ backgroundColor: theme.colors.accent[500] }}
           >
-            Book Now
+            Book
           </button>
         </div>
       </div>

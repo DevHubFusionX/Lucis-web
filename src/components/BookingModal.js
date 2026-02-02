@@ -119,12 +119,10 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
     const duration = totalDuration || 60
     const now = new Date()
 
-    console.log('[DEBUG] availableTimes calculating. selectedSchedules:', selectedSchedules.length, 'totalDuration:', duration)
 
     const baseDate = formData.selectedDate ? parse(formData.selectedDate, 'yyyy-MM-dd', new Date()) : now
 
     selectedSchedules.forEach(schedule => {
-      console.log('[DEBUG] Processing schedule:', { startTime: schedule.startTime, endTime: schedule.endTime })
 
       // Normalize time strings - remove milliseconds if present (09:00:00.000 -> 09:00:00)
       const normalizeTime = (timeStr) => {
@@ -135,7 +133,6 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
 
       const startTimeNormalized = normalizeTime(schedule.startTime)
       const endTimeNormalized = normalizeTime(schedule.endTime)
-      console.log('[DEBUG] Normalized times:', { start: startTimeNormalized, end: endTimeNormalized })
 
       // Robust parsing for multiple formats
       let start, end
@@ -144,7 +141,6 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
       for (const f of formats) {
         const s = parse(startTimeNormalized, f, baseDate)
         const e = parse(endTimeNormalized, f, baseDate)
-        console.log('[DEBUG] Trying format:', f, '-> start:', s, 'end:', e, 'valid:', !isNaN(s.getTime()) && !isNaN(e.getTime()))
         if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
           start = s
           end = e
@@ -152,12 +148,8 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
         }
       }
 
-      if (!start || !end) {
-        console.log('[DEBUG] Failed to parse schedule times')
-        return
-      }
+      if (!start || !end) return
 
-      console.log('[DEBUG] Parsed times - start:', start, 'end:', end)
 
       let current = start
       while (isBefore(current, end)) {
@@ -246,13 +238,10 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
       return true
     })
 
-    console.log('[DEBUG] handleDateChange:', { date, dayName, schedulesCount: schedules.length })
-    console.log('[DEBUG] All schedules:', schedules.map(s => ({ day: s.dayOfWeek, isActive: s.isActive, validFrom: s.validFrom, validUntil: s.validUntil })))
 
     if (matchingSchedules.length === 0) {
       // Check if it's generally a bad day or just out of range
       const hasAnyScheduleForDay = schedules.some(s => s.dayOfWeek.toLowerCase() === dayName && s.isActive)
-      console.log('[DEBUG] No matching schedules. hasAnyScheduleForDay:', hasAnyScheduleForDay)
       if (hasAnyScheduleForDay) {
         setError(`This date is outside the active availability window for ${format(parsedDate, 'eeee')}s.`)
       } else {
@@ -260,7 +249,6 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
       }
       setSelectedSchedules([])
     } else {
-      console.log('[DEBUG] Matching schedules found:', matchingSchedules.map(s => ({ day: s.dayOfWeek, startTime: s.startTime, endTime: s.endTime })))
       setError(null)
       setSelectedSchedules(matchingSchedules)
     }

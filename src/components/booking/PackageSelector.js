@@ -22,7 +22,7 @@ export default function PackageSelector({
               <div
                 key={pkg.id}
                 onClick={() => selectPackage(pkg.id)}
-                className={`relative group cursor-pointer rounded-xl p-4 border-2 transition-all duration-300 flex items-center justify-between gap-4 text-left hover:border-gray-300`}
+                className={`relative group cursor-pointer rounded-xl p-4 border-2 transition-all duration-300 flex items-center justify-between gap-4 text-left hover:border-gray-200`}
                 style={{
                   borderColor: isSelected ? primaryColor : 'transparent',
                   backgroundColor: isSelected ? theme?.colors?.primary?.[50] : '#ffffff',
@@ -30,25 +30,25 @@ export default function PackageSelector({
                 }}
               >
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                        <h4 className="font-bold text-gray-900 text-base">{pkg.name}</h4>
-                        {pkg.isPopular && (
-                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] uppercase font-bold tracking-wider rounded-full">
-                                Popular
-                            </span>
-                        )}
-                    </div>
-                    <p className="text-xs text-gray-500 line-clamp-1">{pkg.description}</p>
-                    <div className="mt-1.5 text-xs font-medium text-gray-400">
-                        Duration: {pkg.duration} mins
-                    </div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h4 className="font-bold text-gray-900 text-base">{pkg.name}</h4>
+                    {pkg.isPopular && (
+                      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] uppercase font-bold tracking-wider rounded-full">
+                        Popular
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 line-clamp-1">{pkg.description}</p>
+                  <div className="mt-1.5 text-xs font-medium text-gray-400">
+                    Duration: {pkg.duration} mins
+                  </div>
                 </div>
 
                 <div className="flex flex-col items-end gap-1">
                   <div className="text-lg font-display font-medium text-gray-900">
-                    ₦{pkg.price}
+                    ₦{pkg.price.toLocaleString()}
                   </div>
-                  <div 
+                  <div
                     className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors`}
                     style={{
                       borderColor: isSelected ? primaryColor : '#d1d5db',
@@ -64,7 +64,7 @@ export default function PackageSelector({
         </div>
       ) : (
         <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-           <p className="text-gray-500 font-medium">No packages available</p>
+          <p className="text-gray-500 font-medium">No packages available</p>
         </div>
       )}
     </div>

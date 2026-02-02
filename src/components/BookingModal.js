@@ -96,9 +96,19 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
   const schedules = schedulesData?.records || []
 
   // -- Helpers --
-  const selectedPackageData = useMemo(() =>
-    packages.find(pkg => formData.selectedPackages.includes(pkg.id)),
+  const selectedPackagesData = useMemo(() =>
+    packages.filter(pkg => formData.selectedPackages.includes(pkg.id)),
     [packages, formData.selectedPackages]
+  )
+
+  const totalDuration = useMemo(() =>
+    selectedPackagesData.reduce((acc, pkg) => acc + (parseInt(pkg.duration) || 0), 0),
+    [selectedPackagesData]
+  )
+
+  const totalPrice = useMemo(() =>
+    selectedPackagesData.reduce((acc, pkg) => acc + (parseFloat(pkg.price) || 0), 0),
+    [selectedPackagesData]
   )
 
   // Calculate Available Times with date-fns
@@ -106,16 +116,48 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
     if (!selectedSchedules || selectedSchedules.length === 0) return []
 
     const timesSet = new Set()
-    const duration = selectedPackageData?.duration || 60
+    const duration = totalDuration || 60
     const now = new Date()
 
-    // Parse selected date or default to now if not set (though logic prevents this)
+    console.log('[DEBUG] availableTimes calculating. selectedSchedules:', selectedSchedules.length, 'totalDuration:', duration)
+
     const baseDate = formData.selectedDate ? parse(formData.selectedDate, 'yyyy-MM-dd', new Date()) : now
 
     selectedSchedules.forEach(schedule => {
-      // Parse schedule times relative to a constant date to get duration
-      const start = parse(schedule.startTime, 'HH:mm:ss', baseDate)
-      const end = parse(schedule.endTime, 'HH:mm:ss', baseDate)
+      console.log('[DEBUG] Processing schedule:', { startTime: schedule.startTime, endTime: schedule.endTime })
+
+      // Normalize time strings - remove milliseconds if present (09:00:00.000 -> 09:00:00)
+      const normalizeTime = (timeStr) => {
+        if (!timeStr) return timeStr
+        // Remove milliseconds (.000) if present
+        return timeStr.replace(/\.\d{3}$/, '')
+      }
+
+      const startTimeNormalized = normalizeTime(schedule.startTime)
+      const endTimeNormalized = normalizeTime(schedule.endTime)
+      console.log('[DEBUG] Normalized times:', { start: startTimeNormalized, end: endTimeNormalized })
+
+      // Robust parsing for multiple formats
+      let start, end
+      const formats = ['HH:mm:ss', 'HH:mm']
+
+      for (const f of formats) {
+        const s = parse(startTimeNormalized, f, baseDate)
+        const e = parse(endTimeNormalized, f, baseDate)
+        console.log('[DEBUG] Trying format:', f, '-> start:', s, 'end:', e, 'valid:', !isNaN(s.getTime()) && !isNaN(e.getTime()))
+        if (!isNaN(s.getTime()) && !isNaN(e.getTime())) {
+          start = s
+          end = e
+          break
+        }
+      }
+
+      if (!start || !end) {
+        console.log('[DEBUG] Failed to parse schedule times')
+        return
+      }
+
+      console.log('[DEBUG] Parsed times - start:', start, 'end:', end)
 
       let current = start
       while (isBefore(current, end)) {
@@ -138,8 +180,10 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
       }
     })
 
-    return Array.from(timesSet).sort()
-  }, [selectedSchedules, selectedPackageData, formData.selectedDate])
+    const result = Array.from(timesSet).sort()
+    console.log('[DEBUG] availableTimes result:', result)
+    return result
+  }, [selectedSchedules, totalDuration, formData.selectedDate])
 
   // -- Handlers --
   const handleNext = async () => {
@@ -158,14 +202,17 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
   }
 
   const selectPackage = (packageId) => {
-    setValue('selectedPackages', [packageId], { shouldValidate: true })
-    setError(null)
+    const current = [...formData.selectedPackages]
+    const index = current.indexOf(packageId)
 
-    // Auto-advance to next step
-    setTimeout(() => {
-      setDirection(1)
-      setStep(2)
-    }, 400)
+    if (index > -1) {
+      current.splice(index, 1)
+    } else {
+      current.push(packageId)
+    }
+
+    setValue('selectedPackages', current, { shouldValidate: true })
+    setError(null)
   }
 
   const handleDateChange = (date) => {
@@ -175,13 +222,45 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
     const parsedDate = parse(date, 'yyyy-MM-dd', new Date())
     const dayName = format(parsedDate, 'eeee').toLowerCase()
 
-    // Get ALL active schedules for this day
-    const matchingSchedules = schedules.filter(s => s.dayOfWeek.toLowerCase() === dayName && s.isActive)
+    // Get ALL active schedules for this day that are also within the valid date range
+    const matchingSchedules = schedules.filter(s => {
+      if (!s.isActive || s.dayOfWeek.toLowerCase() !== dayName) return false
+
+      // Helper to parse dates that might be ISO or yyyy-MM-dd format
+      const parseFlexibleDate = (dateStr) => {
+        if (!dateStr) return null
+        // Try ISO format first (includes T), then yyyy-MM-dd
+        if (dateStr.includes('T')) {
+          return startOfDay(new Date(dateStr))
+        }
+        return startOfDay(parse(dateStr, 'yyyy-MM-dd', new Date()))
+      }
+
+      const validFrom = parseFlexibleDate(s.validFrom)
+      const validUntil = parseFlexibleDate(s.validUntil)
+      const current = startOfDay(parsedDate)
+
+      if (validFrom && current < validFrom) return false
+      if (validUntil && current > validUntil) return false
+
+      return true
+    })
+
+    console.log('[DEBUG] handleDateChange:', { date, dayName, schedulesCount: schedules.length })
+    console.log('[DEBUG] All schedules:', schedules.map(s => ({ day: s.dayOfWeek, isActive: s.isActive, validFrom: s.validFrom, validUntil: s.validUntil })))
 
     if (matchingSchedules.length === 0) {
-      setError(`Not available on ${format(parsedDate, 'eeee')}s. Please choose another date.`)
+      // Check if it's generally a bad day or just out of range
+      const hasAnyScheduleForDay = schedules.some(s => s.dayOfWeek.toLowerCase() === dayName && s.isActive)
+      console.log('[DEBUG] No matching schedules. hasAnyScheduleForDay:', hasAnyScheduleForDay)
+      if (hasAnyScheduleForDay) {
+        setError(`This date is outside the active availability window for ${format(parsedDate, 'eeee')}s.`)
+      } else {
+        setError(`Not available on ${format(parsedDate, 'eeee')}s. Please choose another date.`)
+      }
       setSelectedSchedules([])
     } else {
+      console.log('[DEBUG] Matching schedules found:', matchingSchedules.map(s => ({ day: s.dayOfWeek, startTime: s.startTime, endTime: s.endTime })))
       setError(null)
       setSelectedSchedules(matchingSchedules)
     }
@@ -199,7 +278,7 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
     setError(null)
 
     try {
-      const duration = parseInt(selectedPackageData?.duration) || 60
+      const duration = totalDuration || 60
       const baseDate = parse(data.selectedDate, 'yyyy-MM-dd', new Date())
       const startDateTime = parse(data.selectedTime, 'HH:mm', baseDate)
       const endDateTime = addMinutes(startDateTime, duration)
@@ -208,8 +287,9 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
         professionalId: professional.id,
         startDateTime: startDateTime.toISOString(),
         endDateTime: endDateTime.toISOString(),
-        packageId: data.selectedPackages[0],
-        totalPrice: selectedPackageData?.price || 0,
+        packageId: data.selectedPackages[0], // Using primary package ID
+        packageIds: data.selectedPackages, // Sending all packages
+        totalPrice: totalPrice,
         status: 'pending'
       }
 
@@ -388,9 +468,10 @@ export default function BookingModal({ professional, isOpen, onClose, onSuccess 
               >
                 <BookingReview
                   professional={professional}
-                  selectedPackage={selectedPackageData}
+                  selectedPackages={selectedPackagesData}
                   selectedDate={formData.selectedDate}
                   selectedTime={formData.selectedTime}
+                  totalPrice={totalPrice}
                   theme={theme}
                 />
               </motion.div>

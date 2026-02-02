@@ -30,6 +30,18 @@ export function useUpdateProfilePhotoMutation(userType = 'client') {
 
     return useMutation({
         mutationFn: async (file) => {
+            const currentUser = useAuthStore.getState().user
+
+            // Auto-delete old photo if it exists
+            if (currentUser?.profilePicture?.url) {
+                try {
+                    await authService.deleteProfilePhoto(userType)
+                } catch (error) {
+                    console.warn('Failed to delete old profile photo during replacement:', error)
+                    // Continue anyway to allow the new upload
+                }
+            }
+
             if (userType === 'client') {
                 const { default: profileService } = await import('../services/client/profileService')
                 return profileService.uploadProfilePicture(file)
@@ -44,6 +56,13 @@ export function useUpdateProfilePhotoMutation(userType = 'client') {
                 const newUser = { ...user, profilePicture: data }
                 setUser(newUser, userType)
             }
+
+            // Immediate UI update
+            queryClient.setQueryData(['profile', userType], (oldData) => {
+                if (!oldData) return oldData
+                return { ...oldData, profilePicture: data }
+            })
+
             queryClient.invalidateQueries({ queryKey: ['profile', userType] })
         }
     })
@@ -63,6 +82,11 @@ export function useDeleteProfilePhotoMutation(userType = 'client') {
                 setUser(newUser, userType)
             }
             queryClient.invalidateQueries({ queryKey: ['profile', userType] })
+            // Ensure any local state in components updates
+            queryClient.setQueryData(['profile', userType], (oldData) => {
+                if (!oldData) return oldData
+                return { ...oldData, profilePicture: null }
+            })
         }
     })
 }

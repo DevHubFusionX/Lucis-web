@@ -61,7 +61,7 @@ export default function ProfessionalHero() {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto mb-12 leading-relaxed"
         >
-          Join an exclusive network of top-tier photographers and videographers. 
+          Join an exclusive network of top-tier photographers and videographers.
           Access premium clients, seamless booking, and tools designed for your success.
         </motion.p>
 
@@ -81,8 +81,11 @@ export default function ProfessionalHero() {
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </span>
           </Link>
-          
-          <button className="px-8 py-4 rounded-full font-bold text-lg text-white border border-white/20 hover:bg-white/10 transition-colors">
+
+          <button
+            onClick={() => document.getElementById('benefits').scrollIntoView({ behavior: 'smooth' })}
+            className="px-8 py-4 rounded-full font-bold text-lg text-white border border-white/20 hover:bg-white/10 transition-colors"
+          >
             View Requirements
           </button>
         </motion.div>

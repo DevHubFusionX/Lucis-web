@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
@@ -26,6 +26,18 @@ export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [hoveredItem, setHoveredItem] = useState(null)
   const pathname = usePathname()
+
+  // Lock body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [sidebarOpen])
 
   const mainNavigation = [
     { name: 'Dashboard', href: '/photographer', icon: LayoutDashboard },
@@ -70,12 +82,14 @@ export default function DashboardLayout({ children }) {
         className={`
           fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-xl
           transform transition-transform duration-300 ease-in-out
+          flex flex-col
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:relative lg:flex lg:flex-col
+          lg:translate-x-0 lg:relative
         `}
+        style={{ height: '100dvh' }}
       >
         {/* Logo Area */}
-        <div className="flex items-center h-20 px-6 border-b border-gray-200">
+        <div className="flex items-center h-20 px-6 border-b border-gray-200 shrink-0">
           <Image src="/Logo/topbar.svg" alt="Lucis" width={120} height={32} className="h-48 w-auto" />
           <button
             className="lg:hidden ml-auto text-gray-400 hover:text-gray-600 transition-colors"
@@ -88,7 +102,10 @@ export default function DashboardLayout({ children }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-6 px-4">
+        <nav
+          className="flex-1 overflow-y-auto py-6 px-4 scrollbar-hide"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {/* Main Section */}
           <div className="mb-8">
             <div
@@ -164,7 +181,7 @@ export default function DashboardLayout({ children }) {
           </div>
 
           {/* System Section */}
-          <div>
+          <div className="pb-8">
             <div
               className="text-xs font-bold uppercase tracking-wider mb-3 px-3"
               style={{ color: theme.colors.gray[500] }}
@@ -245,8 +262,6 @@ export default function DashboardLayout({ children }) {
             </div>
           </div>
         </nav>
-
-
       </div>
 
       {/* Main content area */}

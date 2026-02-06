@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { theme } from '../../lib/theme'
 
 export default function ProfessionalHowItWorks() {
@@ -26,13 +27,13 @@ export default function ProfessionalHowItWorks() {
   ]
 
   return (
-    <section className="py-32 bg-neutral-900 overflow-hidden">
+    <section id="how-it-works" className="py-32 bg-neutral-900 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row gap-16 items-center">
-          
+
           {/* Left Content */}
           <div className="md:w-1/3">
-            <h2 
+            <h2
               className="text-4xl md:text-6xl font-bold text-white mb-8 leading-tight"
               style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
             >
@@ -42,21 +43,21 @@ export default function ProfessionalHowItWorks() {
             <p className="text-gray-400 text-lg mb-8">
               We've streamlined the process so you can start connecting with clients faster. No complex onboarding, just pure opportunity.
             </p>
-            <button className="px-8 py-4 rounded-full border border-white/20 text-white font-semibold hover:bg-white hover:text-black transition-all">
+            <Link href="/professional-signup" className="px-8 py-4 rounded-full border border-white/20 text-white font-semibold hover:bg-white hover:text-black transition-all inline-block">
               Start Application
-            </button>
+            </Link>
           </div>
 
           {/* Right Steps */}
           <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-8">
             {steps.map((step, index) => (
-              <div 
+              <div
                 key={index}
                 className="relative p-8 rounded-3xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group"
               >
-                <div 
+                <div
                   className="text-6xl font-bold mb-6 opacity-20 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ 
+                  style={{
                     color: theme.colors.accent[500],
                     fontFamily: theme.typography.fontFamily.display.join(', ')
                   }}

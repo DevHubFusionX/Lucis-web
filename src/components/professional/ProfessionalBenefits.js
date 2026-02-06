@@ -39,10 +39,10 @@ export default function ProfessionalBenefits() {
   ]
 
   return (
-    <section className="py-32 bg-gray-50 text-gray-900">
+    <section id="benefits" className="py-32 bg-gray-50 text-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-20">
-          <h2 
+          <h2
             className="text-4xl md:text-5xl font-bold mb-6 text-gray-900"
             style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
           >
@@ -57,7 +57,7 @@ export default function ProfessionalBenefits() {
           {benefits.map((benefit, index) => {
             const Icon = benefit.icon
             return (
-              <div 
+              <div
                 key={index}
                 className={`
                   ${benefit.colSpan} ${benefit.bg} ${benefit.border}
@@ -69,14 +69,14 @@ export default function ProfessionalBenefits() {
                   <div className="w-14 h-14 rounded-2xl bg-accent-50 flex items-center justify-center mb-8 text-accent-500 group-hover:scale-110 transition-transform duration-500">
                     <Icon className="w-7 h-7" />
                   </div>
-                  
-                  <h3 
+
+                  <h3
                     className="text-2xl font-bold mb-4 text-gray-900"
                     style={{ fontFamily: theme.typography.fontFamily.display.join(', ') }}
                   >
                     {benefit.title}
                   </h3>
-                  
+
                   <p className="text-gray-600 leading-relaxed group-hover:text-gray-900 transition-colors">
                     {benefit.description}
                   </p>

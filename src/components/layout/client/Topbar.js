@@ -9,7 +9,7 @@ export default function Topbar({ user, profile, isDropdownOpen, setIsDropdownOpe
        <div className="flex items-center gap-4 flex-1">
          
          {/* Mobile Logo */}
-         <div className="md:hidden flex items-center h-full py-2">
+         <div className="md:hidden flex items-center h-full py-1">
             <img 
               src="/Logo/logo.svg" 
               alt="Logo" 
